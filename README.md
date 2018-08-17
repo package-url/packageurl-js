@@ -1,2 +1,15 @@
 # packageurl-js
-Help wanted! Home of the future JavaScript implementation of the package url spec 
+
+### Installing:
+Clone the `packageurl-js` repo and `cd` into the directory. 
+
+Then run: 
+```
+npm install
+```
+
+### Testing
+To run the test suite: 
+```
+npm test
+```
