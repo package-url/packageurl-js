@@ -117,10 +117,11 @@ module.exports = class PackageURL {
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
     let path = url.path().trim().replace(/^\/+/g, '');
 
+    let version = ''
     // version is optional - check for existence
     if (path.includes('@')) {
       let index = path.indexOf('@');
-      let version = path.substring(index + 1);
+      version = path.substring(index + 1);
       remainder = path.substring(0, index);
     } else {
       remainder = path;
