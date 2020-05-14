@@ -23,7 +23,5 @@
   "devDependencies": {
     "mocha": "^5.2.0"
   },
-  "dependencies": {
-    "urijs": "^1.19.1"
-  }
+  "dependencies": {}
 }
