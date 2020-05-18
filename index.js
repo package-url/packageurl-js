@@ -19,20 +19,18 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
-let URI = require('urijs');
-
 module.exports = class PackageURL {
+
   constructor(type, namespace, name, version, qualifiers, subpath) {
-    let required = {'type': type, 'name': name};
-    Object.keys(required).forEach(function(key) {
+    let required = { 'type': type, 'name': name };
+    Object.keys(required).forEach(function (key) {
       if (!required[key]) {
-        throw new Error('Invalid purl: "' + key + '" is a required field.'); 
+        throw new Error('Invalid purl: "' + key + '" is a required field.');
       }
     });
-    
-    let strings = {'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath};
-    Object.keys(strings).forEach(function(key) {
+
+    let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
+    Object.keys(strings).forEach(function (key) {
       if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
         return;
       }
@@ -42,7 +40,7 @@ module.exports = class PackageURL {
     if (qualifiers && typeof qualifiers !== 'object') {
       throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
     }
-    
+
     this.type = type;
     this.name = name;
     this.namespace = namespace;
@@ -53,7 +51,7 @@ module.exports = class PackageURL {
 
   toString() {
     var purl = ['pkg:', this.type, '/'];
-    
+
     if (this.namespace) {
       purl.push(encodeURIComponent(this.namespace).replace('%3A', ':'));
       purl.push('/');
@@ -71,7 +69,7 @@ module.exports = class PackageURL {
 
       let qualifiers = this.qualifiers;
       let qualifierString = [];
-      Object.keys(qualifiers).sort().forEach(function(key) {
+      Object.keys(qualifiers).sort().forEach(function (key) {
         qualifierString.push(encodeURIComponent(key).replace('%3A', ':') + '=' + encodeURI(qualifiers[key]));
       });
 
@@ -93,57 +91,71 @@ module.exports = class PackageURL {
 
     var [scheme, remainder] = purl.split(':');
     if (scheme !== 'pkg') {
-      throw new Error('purl is missing the required "pkg" scheme component:');
+      throw new Error('purl is missing the required "pkg" scheme component.');
     }
-    // this strip '/, // and /// as possible in :// or :///    
+    // this strip '/, // and /// as possible in :// or :///
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
     remainder = remainder.trim().replace(/^\/+/g, '');
 
     let type = remainder.split('/')[0];
     var remainder = remainder.split('/').slice(1).join('/');
     if (!type || !remainder) {
-      throw new Error('purl is missing the required "type" component:');
+      throw new Error('purl is missing the required "type" component.');
     }
-    
-    let url = new URI(remainder);
-    let qualifiers = url.query();
-    let subpath = url.fragment();
 
-    if (url.username() !== '' || url.password() !== '') {
+    let url = new URL(purl);
+
+    let qualifiers = null;
+    url.searchParams.forEach((value, key) => {
+      if (!qualifiers) {
+        qualifiers = {};
+      }
+      qualifiers[key] = value;
+    });
+    let subpath = url.hash;
+    if (subpath.indexOf('#') === 0) {
+      subpath = subpath.substring(1);
+    }
+    if (subpath.length === 0) {
+      subpath = null;
+    }
+
+    if (url.username !== '' || url.password !== '') {
       throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
     }
-    
-    // this strip '/, // and /// as possible in :// or :///    
+
+    // this strip '/, // and /// as possible in :// or :///
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    let path = url.path().trim().replace(/^\/+/g, '');
+    let path = url.pathname.trim().replace(/^\/+/g, '');
 
     // version is optional - check for existence
+    let version = null;
     if (path.includes('@')) {
       let index = path.indexOf('@');
-      let version = path.substring(index + 1);
+      version = decodeURIComponent(path.substring(index + 1));
       remainder = path.substring(0, index);
     } else {
       remainder = path;
     }
 
     // The 'remainder' should now consist of an optional namespace and the name
-    remainder = remainder.split('/');
-
-    let name = ''
-    let namespace = ''
-    if (remainder.length > 1) {
-      let nameIndex = remainder.length - 1;
-      let namespaceComponents = remainder.slice(0, nameIndex);
-      name = remainder[nameIndex];
-      namespace = namespaceComponents.join('/');
-    } else if (remainder.length === 1) {
-      name = remainder[0];
+    let remaining = remainder.split('/').slice(1);
+    let name = null;
+    let namespace = null;
+    if (remaining.length > 1) {
+      let nameIndex = remaining.length - 1;
+      let namespaceComponents = remaining.slice(0, nameIndex);
+      name = decodeURIComponent(remaining[nameIndex]);
+      namespace = decodeURIComponent(namespaceComponents.join('/'));
+    } else if (remaining.length === 1) {
+      name = decodeURIComponent(remaining[0]);
     }
 
     if (name === '') {
-      throw new Error('purl is missing the required "name" component:');
+      throw new Error('purl is missing the required "name" component.');
     }
 
     return new PackageURL(type, namespace, name, version, qualifiers, subpath);
   }
+
 };

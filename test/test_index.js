@@ -21,26 +21,51 @@ SOFTWARE.
 */
 
 const assert = require('assert');
-const fs = require('fs');
-
 const TEST_FILE = require(__dirname + '/data/test-suite-data.json');
 
 const PackageURL = require('../index');
 
-describe('PackageURL', function() {
-  TEST_FILE.forEach(function(obj) {
+describe('PackageURL', function () {
+  TEST_FILE.forEach(function (obj) {
     if (obj.is_invalid) {
-      it('should raise errors for invalid PackageURLs', function() {
+      it('should not be possible to create invalid PackageURLs', function () {
+        try {
+          var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
+          assert.fail();
+        } catch (e) {
+          assert.equal(true, e.toString().includes('is a required field'));
+        }
+      });
+      it('should not be possible to parse invalid PackageURLs', function () {
         try {
           PackageURL.fromString(obj.purl);
-        } catch(e) {
+        } catch (e) {
           assert.equal(true, e.toString().includes('Error: purl is missing the required'));
         }
-      })
+      });
     } else {
-      it('should encode/decode valid PackageURLs', function() {
+      it('should be able to create valid PackageURLs', function () {
+        var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
+        assert.equal(obj.type, purl.type);
+        assert.equal(obj.name, purl.name);
+        assert.equal(obj.namespace, purl.namespace);
+        assert.equal(obj.version, purl.version);
+        assert.equal(JSON.stringify(obj.qualifiers), JSON.stringify(purl.qualifiers));
+        assert.equal(obj.subpath, purl.subpath);
+      });
+      it('should be able to convert valid PackageURLs to a string', function () {
         var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
         assert.equal(obj.canonical_purl, purl.toString());
+      });
+      it('should be able to parse valid PackageURLs', function () {
+        var purl = PackageURL.fromString(obj.canonical_purl);
+        assert.equal(purl.toString(), obj.canonical_purl);
+        assert.equal(purl.type, obj.type);
+        assert.equal(purl.name, obj.name);
+        assert.equal(purl.namespace, obj.namespace);
+        assert.equal(purl.version, obj.version);
+        assert.equal(JSON.stringify(purl.qualifiers), JSON.stringify(obj.qualifiers));
+        assert.equal(purl.subpath, obj.subpath);
       });
     }
   });
