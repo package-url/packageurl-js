@@ -110,7 +110,7 @@ module.exports = class PackageURL {
       if (!qualifiers) {
         qualifiers = {};
       }
-      qualifiers[key] = value;
+      qualifiers[key] = decodeURIComponent(value);
     });
     let subpath = url.hash;
     if (subpath.indexOf('#') === 0) {
@@ -132,7 +132,7 @@ module.exports = class PackageURL {
     let version = null;
     if (path.includes('@')) {
       let index = path.indexOf('@');
-      version = path.substring(index + 1);
+      version = decodeURIComponent(path.substring(index + 1));
       remainder = path.substring(0, index);
     } else {
       remainder = path;
@@ -145,7 +145,7 @@ module.exports = class PackageURL {
     if (remaining.length > 1) {
       let nameIndex = remaining.length - 1;
       let namespaceComponents = remaining.slice(0, nameIndex);
-      name = remaining[nameIndex];
+      name = decodeURIComponent(remaining[nameIndex]);
       namespace = decodeURIComponent(namespaceComponents.join('/'));
     } else if (remaining.length === 1) {
       name = remaining[0];
