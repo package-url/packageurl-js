@@ -21,9 +21,7 @@
   },
   "homepage": "https://github.com/package-url/packageurl-js#readme",
   "devDependencies": {
-    "mocha": "^5.2.0"
+    "mocha": "^7.1.2"
   },
-  "dependencies": {
-    "urijs": "^1.19.1"
-  }
+  "dependencies": {}
 }
