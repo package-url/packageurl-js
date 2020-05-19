@@ -19,7 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-module.exports = class PackageURL {
+class PackageURL {
 
   constructor(type, namespace, name, version, qualifiers, subpath) {
     let required = { 'type': type, 'name': name };
@@ -158,4 +158,8 @@ module.exports = class PackageURL {
     return new PackageURL(type, namespace, name, version, qualifiers, subpath);
   }
 
+};
+
+module.exports = {
+  PackageURL
 };

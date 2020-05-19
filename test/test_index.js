@@ -23,7 +23,7 @@ SOFTWARE.
 const assert = require('assert');
 const TEST_FILE = require(__dirname + '/data/test-suite-data.json');
 
-const PackageURL = require('../index');
+const { PackageURL } = require('../index');
 
 describe('PackageURL', function () {
   TEST_FILE.forEach(function (obj) {
