@@ -23,22 +23,29 @@ class PackageURL {
 
   constructor(type, namespace, name, version, qualifiers, subpath) {
     let required = { 'type': type, 'name': name };
-    Object.keys(required).forEach(function (key) {
+    Object.keys(required).forEach(key => {
       if (!required[key]) {
         throw new Error('Invalid purl: "' + key + '" is a required field.');
       }
     });
 
     let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
-    Object.keys(strings).forEach(function (key) {
+    Object.keys(strings).forEach(key => {
       if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
         return;
       }
       throw new Error('Invalid purl: "' + key + '" argument must be a string.');
     });
 
-    if (qualifiers && typeof qualifiers !== 'object') {
-      throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
+    if (qualifiers) {
+      if (typeof qualifiers !== 'object') {
+        throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
+      }
+      Object.keys(qualifiers).forEach(key => {
+        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
+          throw new Error('Invalid purl: qualifier "' + key + '" contains an illegal character.');
+        }
+      });
     }
 
     this.type = type;
@@ -69,7 +76,7 @@ class PackageURL {
 
       let qualifiers = this.qualifiers;
       let qualifierString = [];
-      Object.keys(qualifiers).sort().forEach(function (key) {
+      Object.keys(qualifiers).sort().forEach(key => {
         qualifierString.push(encodeURIComponent(key).replace('%3A', ':') + '=' + encodeURI(qualifiers[key]));
       });
 

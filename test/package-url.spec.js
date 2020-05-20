@@ -33,14 +33,14 @@ describe('PackageURL', function () {
           var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
           assert.fail();
         } catch (e) {
-          assert.equal(true, e.toString().includes('is a required field'));
+          assert.equal(true, e.toString().includes('is a required field') || e.toString().includes('Invalid purl'));
         }
       });
       it('should not be possible to parse invalid PackageURLs', function () {
         try {
           PackageURL.fromString(obj.purl);
         } catch (e) {
-          assert.equal(true, e.toString().includes('Error: purl is missing the required'));
+          assert.equal(true, e.toString().includes('Error: purl is missing the required') || e.toString().includes('Invalid purl'));
         }
       });
     } else {
