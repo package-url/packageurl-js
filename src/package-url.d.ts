@@ -38,7 +38,7 @@ declare module "packageurl-js" {
     /**
      * some name prefix such as a Maven groupid, a Docker image owner, a GitHub user or organization. Optional and type-specific.
      */
-    namespace: string;
+    namespace: string | undefined;
 
     /**
      * the name of the package. Required.
@@ -48,22 +48,22 @@ declare module "packageurl-js" {
     /**
      * the version of the package. Optional.
      */
-    version: string;
+    version: string | undefined;
 
     /**
      * extra qualifying data for a package such as an OS, architecture, a distro, etc. Optional and type-specific.
      */
     qualifiers: {
       [key: string]: string;
-    };
+    } | undefined;
 
     /**
      * extra subpath within a package, relative to the package root. Optional.
      */
-    subpath: string;
+    subpath: string | undefined;
 
-    constructor(type: string, namespace: string, name: string, version: string,
-      qualifiers: { [key: string]: string; }, subpath: string);
+    constructor(type: string, namespace: string | undefined, name: string, version: string | undefined,
+      qualifiers: { [key: string]: string; } | undefined, subpath: string | undefined);
 
     /**
      * Converts the PackageURL to a string
