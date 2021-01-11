@@ -56,8 +56,16 @@ class PackageURL {
     this.subpath = subpath;
   }
 
+  _handlePyPi() {
+    this.name = this.name.toLowerCase().replace('_', '-');
+  }
+
   toString() {
     var purl = ['pkg:', this.type, '/'];
+
+    if (this.type === 'pypi') {
+      this._handlePyPi();
+    }
 
     if (this.namespace) {
       purl.push(encodeURIComponent(this.namespace).replace('%3A', ':'));

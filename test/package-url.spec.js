@@ -67,6 +67,12 @@ describe('PackageURL', function () {
         assert.equal(JSON.stringify(purl.qualifiers), JSON.stringify(obj.qualifiers));
         assert.equal(purl.subpath, obj.subpath);
       });
+      it('should handle pypi package-urls per the purl-spec', function () {
+        const purlMixedCasing = PackageURL.fromString('pkg:pypi/PYYaml@5.3.0');
+        assert.strictEqual(purlMixedCasing.toString(), 'pkg:pypi/pyyaml@5.3.0');
+        const purlWithUnderscore = PackageURL.fromString('pkg:pypi/typing_extensions@1.0.0');
+        assert.strictEqual(purlWithUnderscore.toString(), 'pkg:pypi/typing-extensions@1.0.0');
+      });
     }
   });
 });
