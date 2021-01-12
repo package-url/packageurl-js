@@ -1,3 +1,11 @@
+# 0.0.4
+### Bug Fixes
+* Properly handle PyPI `purl` values per the purl-spec [#18](https://github.com/package-url/packageurl-js/pull/18)
+
+# 0.0.3
+### Bug Fixes
+* Properly handle `undefined` or `null` qualifier values [#16](https://github.com/package-url/packageurl-js/issues/16)
+
 # 0.0.2
 
 ### Features
