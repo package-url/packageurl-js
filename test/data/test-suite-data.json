@@ -48,6 +48,18 @@
     "is_invalid": false
   },
   {
+    "description": "valid go purl with namespace that has a forward slash",
+    "purl": "pkg:golang/github.com/etcd-io/etcd@v2.4.0",
+    "canonical_purl": "pkg:golang/github.com/etcd-io/etcd@v2.4.0",
+    "type": "golang",
+    "namespace": "github.com/etcd-io",
+    "name": "etcd",
+    "version": "v2.4.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
     "description": "bitbucket namespace and name should be lowercased",
     "purl": "pkg:bitbucket/birKenfeld/pyGments-main@244fd47e07d1014f0aed9c",
     "canonical_purl": "pkg:bitbucket/birkenfeld/pygments-main@244fd47e07d1014f0aed9c",
