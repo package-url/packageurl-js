@@ -1,3 +1,10 @@
+# 0.0.5
+### Changes
+* update deps via `npm audit fix`
+
+### Bug Fixes
+* Handle forward slash in namespace for go purls
+
 # 0.0.4
 ### Bug Fixes
 * Properly handle PyPI `purl` values per the purl-spec [#18](https://github.com/package-url/packageurl-js/pull/18)
