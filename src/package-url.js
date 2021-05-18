@@ -68,7 +68,11 @@ class PackageURL {
     }
 
     if (this.namespace) {
-      purl.push(encodeURIComponent(this.namespace).replace('%3A', ':'));
+      purl.push(
+        encodeURIComponent(this.namespace)
+          .replace('%3A', ':')
+          .replace('%2F', '/')
+        );
       purl.push('/');
     }
 
