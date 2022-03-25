@@ -57,7 +57,7 @@ class PackageURL {
   }
 
   _handlePyPi() {
-    this.name = this.name.toLowerCase().replace('_', '-');
+    this.name = this.name.toLowerCase().replace(/_/g, '-');
   }
 
   toString() {
