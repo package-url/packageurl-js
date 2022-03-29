@@ -1,3 +1,7 @@
+# 0.0.6
+### Bug Fixes
+* Properly replace all underscore values for PyPI packages [#23](https://github.com/package-url/packageurl-js/issues/23)
+
 # 0.0.5
 ### Changes
 * update deps via `npm audit fix`
