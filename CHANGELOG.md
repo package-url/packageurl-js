@@ -1,3 +1,8 @@
+# 0.0.7
+### Bug Fixes
+* Keep license texts in comment headers, even after minification [#27](https://github.com/package-url/packageurl-js/issues/27)
+* Fix a bug in golang purls that was adding additional slashes to the string [#30](https://github.com/package-url/packageurl-js/issues/30)
+
 # 0.0.6
 ### Bug Fixes
 * Properly replace all underscore values for PyPI packages [#23](https://github.com/package-url/packageurl-js/issues/23)
