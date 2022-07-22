@@ -60,6 +60,18 @@
     "is_invalid": false
   },
   {
+    "description": "valid go purl with namespace that has more than one forward slash",
+    "purl": "pkg:golang/github.com/cncf/xds/go@v0.0.0-20210922020428-25de7278fc84",
+    "canonical_purl": "pkg:golang/github.com/cncf/xds/go@v0.0.0-20210922020428-25de7278fc84",
+    "type": "golang",
+    "namespace": "github.com/cncf/xds",
+    "name": "go",
+    "version": "v0.0.0-20210922020428-25de7278fc84",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
     "description": "bitbucket namespace and name should be lowercased",
     "purl": "pkg:bitbucket/birKenfeld/pyGments-main@244fd47e07d1014f0aed9c",
     "canonical_purl": "pkg:bitbucket/birkenfeld/pygments-main@244fd47e07d1014f0aed9c",
