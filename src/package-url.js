@@ -108,7 +108,7 @@ class PackageURL {
       throw new Error('A purl string argument is required.');
     }
 
-    var [scheme, remainder] = purl.split(':');
+    let [scheme, remainder] = purl.split(':', 2);
     if (scheme !== 'pkg') {
       throw new Error('purl is missing the required "pkg" scheme component.');
     }
@@ -116,8 +116,8 @@ class PackageURL {
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
     remainder = remainder.trim().replace(/^\/+/g, '');
 
-    let type = remainder.split('/')[0];
-    var remainder = remainder.split('/').slice(1).join('/');
+    let type
+    [type, remainder] = remainder.split('/', 2);
     if (!type || !remainder) {
       throw new Error('purl is missing the required "type" component.');
     }
