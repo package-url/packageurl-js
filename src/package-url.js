@@ -19,7 +19,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+const KnownQualifierNames = Object.freeze({
+  // known qualifiers as defined here:
+  // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
+  RepositoryUrl: 'repository_url',
+  DownloadUrl: 'download_url',
+  VcsUrl: 'vcs_url',
+  FileName: 'file_name',
+  Checksum: 'checksum'
+});
+
 class PackageURL {
+
+  static get KnownQualifierNames() {
+    return KnownQualifierNames;
+  }
 
   constructor(type, namespace, name, version, qualifiers, subpath) {
     let required = { 'type': type, 'name': name };

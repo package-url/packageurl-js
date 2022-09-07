@@ -1,3 +1,7 @@
+# unreleased
+### Features
+* Add enum-like static readonly property `KnownQualifierNames` to reflect known qualifier names [#34](https://github.com/package-url/packageurl-js/pull/34)
+
 # 0.0.7
 ### Bug Fixes
 * Keep license texts in comment headers, even after minification [#27](https://github.com/package-url/packageurl-js/issues/27)

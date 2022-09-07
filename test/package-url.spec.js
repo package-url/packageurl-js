@@ -108,4 +108,30 @@ describe('PackageURL', function () {
       }
     })
   });
+
+  describe('KnownQualifierNames', function () {
+    describe('check access', function () {
+      [
+        ['RepositoryUrl', 'repository_url'],
+        ['DownloadUrl', 'download_url'],
+        ['VcsUrl', 'vcs_url'],
+        ['FileName', 'file_name'],
+        ['Checksum', 'checksum']
+      ].forEach(function ([name, expectedValue]) {
+        it(`maps: ${name} => ${expectedValue}`, function () {
+          assert.strictEqual(PackageURL.KnownQualifierNames[name], expectedValue);
+        });
+      });
+    });
+
+    it('readonly: cannot be written', function () {
+      PackageURL.KnownQualifierNames = {foo: 'bar'};
+      assert.notDeepStrictEqual(PackageURL.KnownQualifierNames, {foo: 'bar'})
+    });
+
+    it('frozen: cannot be modified', function () {
+      PackageURL.KnownQualifierNames.foo = 'bar';
+      assert.strictEqual(PackageURL.KnownQualifierNames.foo, undefined)
+    });
+  });
 });
