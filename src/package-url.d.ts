@@ -31,6 +31,18 @@ declare module "packageurl-js" {
   class PackageURL {
 
     /**
+     * Known qualifiers names.
+     * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs specification}
+     */
+    static KnownQualifierNames: Readonly<{
+      RepositoryUrl:'repository_url',
+      DownloadUrl: 'download_url',
+      VcsUrl: 'vcs_url',
+      FileName: 'file_name',
+      Checksum: 'checksum'
+    }>
+
+    /**
      *  the package "type" or package "protocol" such as maven, npm, nuget, gem, pypi, etc. Required.
      */
     type: string;
@@ -62,11 +74,11 @@ declare module "packageurl-js" {
      */
     subpath: string | undefined | null;
 
-    constructor(type: string, 
-      namespace: string | undefined | null, 
-      name: string, 
+    constructor(type: string,
+      namespace: string | undefined | null,
+      name: string,
       version: string | undefined | null,
-      qualifiers: { [key: string]: string; } | undefined | null, 
+      qualifiers: { [key: string]: string; } | undefined | null,
       subpath: string | undefined | null);
 
     /**
