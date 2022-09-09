@@ -1,4 +1,4 @@
-# unreleased
+# 1.0.0
 ### Features
 * Add enum-like static readonly property `KnownQualifierNames` to reflect known qualifier names [#34](https://github.com/package-url/packageurl-js/pull/34)
 
