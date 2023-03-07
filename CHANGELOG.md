@@ -1,5 +1,5 @@
-# UNRELEASED
-### ### Bug Fixes
+# 1.0.1
+### Bug Fixes
 * Hardened encoding/decoding of URL special chars like `@` and `#` [#37](https://github.com/package-url/packageurl-js/pull/37)
 
 # 1.0.0
