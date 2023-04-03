@@ -2,26 +2,25 @@
   "name": "packageurl-js",
   "version": "1.0.1",
   "description": "JavaScript library to parse and build \"purl\" aka. package URLs. This is a microlibrary implementing the purl spec at https://github.com/package-url",
-  "main": "index.js",
-  "scripts": {
-    "test": "./node_modules/.bin/mocha"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/package-url/packageurl-js.git"
-  },
   "keywords": [
     "package",
     "url"
   ],
-  "author": "the purl authors",
-  "license": "MIT",
+  "homepage": "https://github.com/package-url/packageurl-js#readme",
   "bugs": {
     "url": "https://github.com/package-url/packageurl-js/issues"
   },
-  "homepage": "https://github.com/package-url/packageurl-js#readme",
+  "license": "MIT",
+  "author": "the purl authors",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/package-url/packageurl-js.git"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/mocha"
+  },
   "devDependencies": {
     "mocha": "^7.1.2"
-  },
-  "dependencies": {}
+  }
 }
