@@ -1,3 +1,10 @@
+# 1.0.2
+### Bug Fixes
+* Normalize metafiles (contributed by @smorimoto)
+
+### Chores
+* Bumped various dependencies
+
 # 1.0.1
 ### Bug Fixes
 * Hardened encoding/decoding of URL special chars like `@` and `#` [#37](https://github.com/package-url/packageurl-js/pull/37)
