@@ -174,6 +174,14 @@ class PackageURL {
     if (path.includes('@')) {
       let index = path.indexOf('@');
       version = decodeURIComponent(path.substring(index + 1));
+
+      // Check that version doesnt contain special characters by checking if first char can be encoded
+      let tempEncoded = encodeURIComponent(version[0]);
+      let tempDecoded = decodeURIComponent(version[0]);
+
+      if (tempDecoded !== tempEncoded) {
+        throw new Error('Invalid purl: version should not include special characters');
+      }
       remainder = path.substring(0, index);
     } else {
       remainder = path;

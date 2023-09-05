@@ -370,5 +370,17 @@
     "qualifiers": null,
     "subpath": null,
     "is_invalid": false
+  },
+  {
+    "description": "invalid maven purl",
+    "purl": "pkg:maven/org.apache.commons/io@@1.4.0",
+    "canonical_purl": "pkg:maven/org.apache.commons/io@@1.4.0",
+    "type": null,
+    "namespace": null,
+    "name": "io",
+    "version": null,
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": true
   }
 ]
