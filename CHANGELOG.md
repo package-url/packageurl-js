@@ -1,3 +1,7 @@
+# 1.1.1
+### Bug Fix
+* publish errors
+
 # 1.1.0
 ### Features
 * Verify entire version string is properly encoded (contributed by @mcombuechen, @topaztee)
