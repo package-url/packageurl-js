@@ -1,3 +1,7 @@
+# 1.1.0
+### Features
+* Verify entire version string is properly encoded (contributed by @mcombuechen, @topaztee)
+
 # 1.0.2
 ### Bug Fixes
 * Normalize metafiles (contributed by @smorimoto)
