@@ -173,15 +173,18 @@ class PackageURL {
     let version = null;
     if (path.includes('@')) {
       let index = path.indexOf('@');
-      version = decodeURIComponent(path.substring(index + 1));
+      let rawVersion= path.substring(index + 1);
+      version = decodeURIComponent(rawVersion);
 
-      // Check that version doesnt contain special characters by checking if first char can be encoded
-      let tempEncoded = encodeURIComponent(version[0]);
-      let tempDecoded = decodeURIComponent(version[0]);
+      // Convert percent-encoded colons (:) back, to stay in line with the `toString`
+      // implementation of this library.
+      // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
+      let versionEncoded = encodeURIComponent(version).replace(/%3A/g, ':');
 
-      if (tempDecoded !== tempEncoded) {
-        throw new Error('Invalid purl: version should not include special characters');
+      if (rawVersion !== versionEncoded) {
+        throw new Error('Invalid purl: version must be percent-encoded');
       }
+
       remainder = path.substring(0, index);
     } else {
       remainder = path;
