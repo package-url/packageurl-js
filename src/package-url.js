@@ -74,12 +74,21 @@ class PackageURL {
   _handlePyPi() {
     this.name = this.name.toLowerCase().replace(/_/g, '-');
   }
+  _handlePub() {
+    this.name = this.name.toLowerCase();
+    if (!/^[a-z0-9_]+$/i.test(this.name)) {
+      throw new Error('Invalid purl: contains an illegal character.');
+    }
+  }
 
   toString() {
     var purl = ['pkg:', encodeURIComponent(this.type), '/'];
 
     if (this.type === 'pypi') {
       this._handlePyPi();
+    }
+    if (this.type === 'pub') {
+      this._handlePub();
     }
 
     if (this.namespace) {
