@@ -1,3 +1,7 @@
+# 1.2.0
+## Features
+* Add `pub` parsing for Dart and Flutter packages (contributed by @topaztee)
+
 # 1.1.1
 ### Bug Fix
 * publish errors
