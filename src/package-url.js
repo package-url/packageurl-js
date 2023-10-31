@@ -138,7 +138,8 @@ class PackageURL {
       throw new Error('A purl string argument is required.');
     }
 
-    let [scheme, remainder] = purl.split(':', 2);
+    let scheme = purl.slice(0, purl.indexOf(':'))
+    let remainder = purl.slice(purl.indexOf(':') + 1)
     if (scheme !== 'pkg') {
       throw new Error('purl is missing the required "pkg" scheme component.');
     }
