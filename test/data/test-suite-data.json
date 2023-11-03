@@ -108,6 +108,18 @@
     "is_invalid": false
   },
   {
+    "description": "debian can have debian versions as part of version with plus sign",
+    "purl": "pkg:deb/debian/libssl1.1@1.1.1n-0+deb10u3?arch=amd64&distro=debian-10",
+    "canonical_purl": "pkg:deb/debian/libssl1.1@1.1.1n-0+deb10u3?arch=amd64&distro=debian-10",
+    "type": "deb",
+    "namespace": "debian",
+    "name": "libssl1.1",
+    "version": "1.1.1n-0+deb10u3",
+    "qualifiers": {"arch": "amd64", "distro": "debian-10"},
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
     "description": "docker uses qualifiers and hash image id as versions",
     "purl": "pkg:docker/customer/dockerimage@sha256:244fd47e07d1004f0aed9c?repository_url=gcr.io",
     "canonical_purl": "pkg:docker/customer/dockerimage@sha256:244fd47e07d1004f0aed9c?repository_url=gcr.io",
