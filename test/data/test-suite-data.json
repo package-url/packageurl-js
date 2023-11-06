@@ -418,5 +418,17 @@
     "qualifiers": null,
     "subpath": null,
     "is_invalid": true
+  },
+  {
+    "description": "colon present in name is a valid PURL",
+    "purl": "pkg:maven/:spring-context@5.2.8-RELEASE",
+    "canonical_purl": "pkg:maven/:spring-context@5.2.8-RELEASE",
+    "type": "maven",
+    "namespace": null,
+    "name": ":spring-context",
+    "version": "5.2.8-RELEASE",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
   }
 ]
