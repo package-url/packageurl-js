@@ -1,3 +1,8 @@
+# 1.2.1
+## Bug Fixes
+* purls with + in versions are now valid #52 (contributed by @satanshiro)
+* purl names staring with `:` are now accepted #45 (contributed by @aniruth37)
+
 # 1.2.0
 ## Features
 * Add `pub` parsing for Dart and Flutter packages (contributed by @topaztee)
