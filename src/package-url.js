@@ -100,11 +100,11 @@ class PackageURL {
       purl.push('/');
     }
 
-    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
+    purl.push(encodeURIComponent(this.name));
 
     if (this.version) {
       purl.push('@');
-      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':').replace(/%2B/g,'+'));
+      purl.push(encodeURIComponent(this.version));
     }
 
     if (this.qualifiers) {
@@ -126,7 +126,6 @@ class PackageURL {
     if (this.subpath) {
       purl.push('#');
       purl.push(encodeURIComponent(this.subpath)
-        .replace(/%3A/g, ':')
         .replace(/%2F/g, '/'));
     }
 
@@ -185,15 +184,6 @@ class PackageURL {
       let index = path.indexOf('@');
       let rawVersion= path.substring(index + 1);
       version = decodeURIComponent(rawVersion);
-
-      // Convert percent-encoded colons (:) back, to stay in line with the `toString`
-      // implementation of this library.
-      // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
-      let versionEncoded = encodeURIComponent(version).replace(/%3A/g, ':').replace(/%2B/g,'+');
-
-      if (rawVersion !== versionEncoded) {
-        throw new Error('Invalid purl: version must be percent-encoded');
-      }
 
       remainder = path.substring(0, index);
     } else {
