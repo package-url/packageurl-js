@@ -149,7 +149,7 @@ class PackageURL {
 
     let type
     [type, remainder] = remainder.split('/', 2);
-    if (!type || !remainder) {
+    if (!type) {
       throw new Error('purl is missing the required "type" component.');
     }
     type = decodeURIComponent(type)
@@ -207,7 +207,7 @@ class PackageURL {
       let nameIndex = remaining.length - 1;
       let namespaceComponents = remaining.slice(0, nameIndex);
       name = decodeURIComponent(remaining[nameIndex]);
-      namespace = decodeURIComponent(namespaceComponents.join('/'));
+      namespace = decodeURIComponent(namespaceComponents.filter(item => item.trim()).join('/'));
     } else if (remaining.length === 1) {
       name = decodeURIComponent(remaining[0]);
     }
