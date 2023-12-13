@@ -430,5 +430,17 @@
     "qualifiers": null,
     "subpath": null,
     "is_invalid": false
+  },
+  {
+    "description": "In namespace, leading and trailing slashes '/' are not significant and should be stripped in the canonical form",
+    "purl": "pkg:golang//github.com/ll/xlog@2.0",
+    "canonical_purl": "pkg:golang/github.com/ll/xlog@2.0",
+    "type": "golang",
+    "namespace": "github.com/ll",
+    "name": "xlog",
+    "version": "2.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
   }
 ]
