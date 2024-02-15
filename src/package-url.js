@@ -198,7 +198,7 @@ class PackageURL {
 
     // version is optional - check for existence
     let version = undefined;
-    const atSignIndex = path.indexOf('@');
+    const atSignIndex = path.lastIndexOf('@');
     if (atSignIndex !== -1) {
       const rawVersion = path.slice(atSignIndex + 1);
       version = decodeURIComponent(rawVersion);
