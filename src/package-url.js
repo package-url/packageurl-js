@@ -182,7 +182,7 @@ class PackageURL {
     // version is optional - check for existence
     let version = null;
     if (path.includes('@')) {
-      let index = path.indexOf('@');
+      let index = path.lastIndexOf('@');
       let rawVersion= path.substring(index + 1);
       version = decodeURIComponent(rawVersion);
 
