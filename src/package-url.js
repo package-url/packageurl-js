@@ -19,6 +19,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+'use strict';
 
 const KnownQualifierNames = Object.freeze({
   // known qualifiers as defined here:
@@ -30,6 +31,47 @@ const KnownQualifierNames = Object.freeze({
   Checksum: 'checksum'
 });
 
+function encodeWithColon(str) {
+  return encodeURIComponent(str).replace(/%3A/g, ':');
+}
+
+function encodeWithColonAndForwardSlash(str) {
+  return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2F/g, '/');
+}
+
+function encodeWithColonAndPlusSign(str) {
+  return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2B/g,'+');
+}
+
+function encodeWithForwardSlash(str) {
+  return encodeURIComponent(str).replace(/%2F/g, '/');
+}
+
+function valifateQualifiers(qualifiers) {
+  if (typeof qualifiers !== 'object' || qualifiers === null) {
+    throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
+  }
+  const qualifiersKeys = Object.keys(qualifiers);
+  for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
+    const key = qualifiersKeys[i];
+    if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
+      throw new Error(`Invalid purl: qualifier "${key}" contains an illegal character.`);
+    }
+  }
+}
+
+function validateRequired(name, value) {
+  if (!value) {
+    throw new Error(`Invalid purl: "${name}" is a required field.`);
+  }
+}
+
+function validateStrings(name, value) {
+  if (typeof value === 'string' ? value.length === 0 : value) {
+    throw new Error(`Invalid purl: "'${name}" argument must be a non-empty string.`);
+  }
+}
+
 class PackageURL {
 
   static get KnownQualifierNames() {
@@ -37,139 +79,114 @@ class PackageURL {
   }
 
   constructor(type, namespace, name, version, qualifiers, subpath) {
-    let required = { 'type': type, 'name': name };
-    Object.keys(required).forEach(key => {
-      if (!required[key]) {
-        throw new Error('Invalid purl: "' + key + '" is a required field.');
-      }
-    });
+    validateRequired('type', type);
+    validateRequired('name', name);
 
-    let strings = { 'type': type, 'namespace': namespace, 'name': name, 'versions': version, 'subpath': subpath };
-    Object.keys(strings).forEach(key => {
-      if (strings[key] && typeof strings[key] === 'string' || !strings[key]) {
-        return;
-      }
-      throw new Error('Invalid purl: "' + key + '" argument must be a string.');
-    });
+    validateStrings('type', type);
+    validateStrings('namespace', namespace);
+    validateStrings('name', name);
+    validateStrings('version', version);
+    validateStrings('subpath', subpath);
 
     if (qualifiers) {
-      if (typeof qualifiers !== 'object') {
-        throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
-      }
-      Object.keys(qualifiers).forEach(key => {
-        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
-          throw new Error('Invalid purl: qualifier "' + key + '" contains an illegal character.');
-        }
-      });
+      valifateQualifiers(qualifiers);
     }
 
     this.type = type;
     this.name = name;
-    this.namespace = namespace;
-    this.version = version;
-    this.qualifiers = qualifiers;
-    this.subpath = subpath;
+    this.namespace = namespace ?? undefined;
+    this.version = version ?? undefined;
+    this.qualifiers = qualifiers ?? undefined;
+    this.subpath = subpath ?? undefined;
   }
 
   _handlePyPi() {
-    this.name = this.name.toLowerCase().replace(/_/g, '-');
+    this.name = this.name.toLowerCase().replaceAll('_', '-');
   }
   _handlePub() {
-    this.name = this.name.toLowerCase();
-    if (!/^[a-z0-9_]+$/i.test(this.name)) {
+    const lowered = this.name.toLowerCase();
+    if (!/^\w+$/.test(lowered)) {
       throw new Error('Invalid purl: contains an illegal character.');
     }
+    this.name = lowered;
   }
 
   toString() {
-    var purl = ['pkg:', encodeURIComponent(this.type), '/'];
-
-    if (this.type === 'pypi') {
+    const { type } = this;
+    if (type === 'pypi') {
       this._handlePyPi();
-    }
-    if (this.type === 'pub') {
+    } else if (type === 'pub') {
       this._handlePub();
     }
+    const { namespace, name, version, qualifiers, subpath } = this;
+    let purl = `pkg:${encodeURIComponent(type)}/`;
 
-    if (this.namespace) {
-      purl.push(
-        encodeURIComponent(this.namespace)
-          .replace(/%3A/g, ':')
-          .replace(/%2F/g, '/')
-        );
-      purl.push('/');
+    if (namespace) {
+      purl = `${purl}${encodeWithColonAndForwardSlash(namespace)}/`;
     }
 
-    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
+    purl = `${purl}${encodeWithColon(name)}`
 
-    if (this.version) {
-      purl.push('@');
-      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':').replace(/%2B/g,'+'));
+    if (version) {
+      purl = `${purl}@${encodeWithColonAndPlusSign(version)}`;
     }
 
-    if (this.qualifiers) {
-      purl.push('?');
-
-      let qualifiers = this.qualifiers;
-      let qualifierString = [];
-      Object.keys(qualifiers).sort().forEach(key => {
-        qualifierString.push(
-          encodeURIComponent(key).replace(/%3A/g, ':')
-          + '='
-          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
-        );
-      });
-
-      purl.push(qualifierString.join('&'));
+    if (qualifiers) {
+      let qstr = '';
+      const qualifiersKeys =  Object.keys(qualifiers).sort();
+      for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
+        const key = qualifiersKeys[i];
+        qstr = `${qstr}${qstr.length ? '&' : ''}${encodeWithColon(key)}=${encodeWithForwardSlash(qualifiers[key])}`
+      }
+      purl = `${purl}?${qstr}`;
     }
 
-    if (this.subpath) {
-      purl.push('#');
-      purl.push(encodeURIComponent(this.subpath)
-        .replace(/%3A/g, ':')
-        .replace(/%2F/g, '/'));
+    if (subpath) {
+      purl = `${purl}#${encodeWithColonAndForwardSlash(subpath)}`
     }
 
-    return purl.join('');
+    return purl
   }
 
   static fromString(purl) {
-    if (!purl || typeof purl !== 'string' || !purl.trim()) {
-      throw new Error('A purl string argument is required.');
+    if (typeof purl !== 'string' || purl.length === 0 || purl.trim().length === 0) {
+      throw new Error('A purl non-empty string argument is required.');
     }
-
-    let scheme = purl.slice(0, purl.indexOf(':'))
-    let remainder = purl.slice(purl.indexOf(':') + 1)
+    const scheme = purl.slice(0, purl.indexOf(':'));
     if (scheme !== 'pkg') {
       throw new Error('purl is missing the required "pkg" scheme component.');
     }
+
+    let remainder = purl.slice(purl.indexOf(':') + 1);
     // this strip '/, // and /// as possible in :// or :///
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
     remainder = remainder.trim().replace(/^\/+/g, '');
 
     let type
-    [type, remainder] = remainder.split('/', 2);
+    ({ 0: type, 1: remainder } = remainder.split('/', 2));
     if (!type || !remainder) {
       throw new Error('purl is missing the required "type" component.');
     }
-    type = decodeURIComponent(type)
+    type = decodeURIComponent(type);
 
-    let url = new URL(purl);
+    const url = new URL(purl);
 
-    let qualifiers = null;
-    url.searchParams.forEach((value, key) => {
-      if (!qualifiers) {
-        qualifiers = {};
+    const { searchParams } = url;
+    let qualifiers = undefined;
+    if (searchParams.size) {
+      qualifiers = {};
+      for (const { 0: key, 1: value } of searchParams) {
+        qualifiers[key] = value;
       }
-      qualifiers[key] = value;
-    });
-    let subpath = url.hash;
+    }
+
+    let { hash: subpath } = url;
     if (subpath.indexOf('#') === 0) {
-      subpath = subpath.substring(1);
+      subpath = subpath.slice(1);
     }
     subpath = subpath.length === 0
-      ? null
-      : decodeURIComponent(subpath)
+      ? undefined
+      : decodeURIComponent(subpath);
 
     if (url.username !== '' || url.password !== '') {
       throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
@@ -177,36 +194,36 @@ class PackageURL {
 
     // this strip '/, // and /// as possible in :// or :///
     // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    let path = url.pathname.trim().replace(/^\/+/g, '');
+    const path = url.pathname.trim().replace(/^\/+/g, '');
 
     // version is optional - check for existence
-    let version = null;
-    if (path.includes('@')) {
-      let index = path.indexOf('@');
-      let rawVersion= path.substring(index + 1);
+    let version = undefined;
+    const atSignIndex = path.indexOf('@');
+    if (atSignIndex !== -1) {
+      const rawVersion = path.slice(atSignIndex + 1);
       version = decodeURIComponent(rawVersion);
 
       // Convert percent-encoded colons (:) back, to stay in line with the `toString`
       // implementation of this library.
       // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
-      let versionEncoded = encodeURIComponent(version).replace(/%3A/g, ':').replace(/%2B/g,'+');
+      const versionEncoded = encodeWithColonAndPlusSign(version);
 
       if (rawVersion !== versionEncoded) {
         throw new Error('Invalid purl: version must be percent-encoded');
       }
 
-      remainder = path.substring(0, index);
+      remainder = path.slice(0, atSignIndex);
     } else {
       remainder = path;
     }
 
     // The 'remainder' should now consist of an optional namespace and the name
-    let remaining = remainder.split('/').slice(1);
-    let name = null;
-    let namespace = null;
+    const remaining = remainder.split('/').slice(1);
+    let name = '';
+    let namespace = undefined;
     if (remaining.length > 1) {
-      let nameIndex = remaining.length - 1;
-      let namespaceComponents = remaining.slice(0, nameIndex);
+      const nameIndex = remaining.length - 1;
+      const namespaceComponents = remaining.slice(0, nameIndex);
       name = decodeURIComponent(remaining[nameIndex]);
       namespace = decodeURIComponent(namespaceComponents.join('/'));
     } else if (remaining.length === 1) {
