@@ -62,6 +62,32 @@ class PackageURL {
         }
       });
     }
+    
+    if (type === 'conan') {
+      if (qualifiers) {
+        if (qualifiers.hasOwnProperty('channel') && !namespace) {
+          throw new Error('Invalid purl: conan has only channel qualifiers.');
+        }
+      }
+      if (namespace && !qualifiers) {
+        throw new Error('Invalid purl: conan has only namespace.');
+      } 
+    }
+
+    if (type === 'cran') {
+      if (!version) {
+        throw new Error('Invalid purl: cran requires a version.');
+      }
+    }
+
+    if (type === 'swift') {
+      if (!namespace) {
+	throw new Error('Invalid purl: swift has no namespace.');
+      }
+      if (!version) {
+	throw new Error('Invalid purl: swift requires a version.');
+      }
+    }
 
     this.type = type;
     this.name = name;
@@ -104,7 +130,7 @@ class PackageURL {
 
     if (this.version) {
       purl.push('@');
-      purl.push(encodeURIComponent(this.version));
+      purl.push(encodeURIComponent(this.version).replace(/%3A/g, ':').replace(/%2B/g,'+'));
     }
 
     if (this.qualifiers) {
@@ -116,7 +142,7 @@ class PackageURL {
         qualifierString.push(
           encodeURIComponent(key).replace(/%3A/g, ':')
           + '='
-          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
+          + encodeURIComponent(qualifiers[key]).replace(/%3A/g, ':').replace(/%2F/g, '/')
         );
       });
 

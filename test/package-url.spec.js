@@ -24,6 +24,7 @@ const assert = require('assert');
 const {describe, it} = require("mocha");
 
 const TEST_FILE = require('./data/test-suite-data.json');
+const CONTRIB_TEST_FILE = require('./data/contrib-tests.json');
 
 /** @type {import('../src/package-url')} */
 const PackageURL = require('../src/package-url');
@@ -106,7 +107,7 @@ describe('PackageURL', function () {
   });
 
   describe('test-suite-data', function () {
-    TEST_FILE.forEach(function (obj) {
+    TEST_FILE.concat(CONTRIB_TEST_FILE).forEach(function (obj) {
       if (obj.is_invalid) {
         it('should not be possible to create invalid PackageURLs', function () {
           try {
