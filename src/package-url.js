@@ -47,21 +47,86 @@ function encodeWithForwardSlash(str) {
     return encodeURIComponent(str).replace(/%2F/g, '/')
 }
 
-function valifateQualifiers(qualifiers) {
-    if (typeof qualifiers !== 'object' || qualifiers === null) {
+function normalizeName(name, type) {
+    if (type === 'bitbucket' || type === 'gitlab' || type === 'github') {
+        return name.toLowerCase()
+    }
+    if (type === 'pypi') {
+        return name.toLowerCase().replaceAll('_', '-')
+    }
+    if (type === 'pub' && /\W/.test(name)) {
+        throw new Error(
+            'Invalid purl: "name" argument contains an illegal character.'
+        )
+    }
+    return name
+}
+
+function normalizeNamespace(namespace, type) {
+    if (typeof namespace !== 'string') {
+        return undefined
+    }
+    if (
+        type === 'bitbucket' ||
+        type === 'gitlab' ||
+        type === 'github' ||
+        type === 'pypi'
+    ) {
+        return namespace.toLowerCase()
+    }
+    return namespace
+}
+
+function normalizeQualifiers(qualifiers) {
+    if (qualifiers === null || qualifiers === undefined) {
+        return undefined
+    }
+    if (typeof qualifiers !== 'object') {
         throw new Error(
             'Invalid purl: "qualifiers" argument must be a dictionary.'
         )
     }
-    const qualifiersKeys = Object.keys(qualifiers)
-    for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
-        const key = qualifiersKeys[i]
-        if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
+    const entries =
+        typeof qualifiers.entries === 'function'
+            ? qualifiers.entries()
+            : Object.entries(qualifiers)
+    const normalized = {}
+    for (const { 0: key, 1: value } of entries) {
+        const lowered = key.toLowerCase()
+        if (!/^[a-z]+$/.test(lowered) && !/[.-_]/.test(lowered)) {
             throw new Error(
                 `Invalid purl: qualifier "${key}" contains an illegal character.`
             )
         }
+        normalized[lowered] = value
     }
+    return normalized
+}
+
+function normalizeSubpath(subpath) {
+    if (typeof subpath !== 'string') {
+        return undefined
+    }
+    const segments = subpath.split('/')
+    const filtered = []
+    for (let i = 0, { length } = segments; i < length; i += 1) {
+        const s = segments[i].trim()
+        if (s.length !== 0 && s !== '.' && s !== '..') {
+            filtered.push(s)
+        }
+    }
+    return filtered.join('/')
+}
+
+function normalizeType(type) {
+    return type.trim().toLowerCase()
+}
+
+function normalizeVersion(version) {
+    if (typeof version !== 'string') {
+        return undefined
+    }
+    return version.trim()
 }
 
 function validateRequired(name, value) {
@@ -88,26 +153,19 @@ class PackageURL {
         validateRequired('name', name)
 
         validateStrings('type', type)
-        validateStrings('namespace', type)
-        validateStrings('name', type)
-        validateStrings('versions', type)
+        validateStrings('namespace', namespace)
+        validateStrings('name', name)
+        validateStrings('version', version)
         validateStrings('subpath', subpath)
 
-        if (qualifiers) {
-            valifateQualifiers(qualifiers)
-        }
-
-        this.type = type
-        this.name = name
-        this.namespace = namespace ?? undefined
-        this.version = version ?? undefined
-        this.qualifiers = qualifiers ?? undefined
-        this.subpath = subpath ?? undefined
+        this.type = normalizeType(type)
+        this.name = normalizeName(name, type)
+        this.namespace = normalizeNamespace(namespace, type)
+        this.version = normalizeVersion(version)
+        this.qualifiers = normalizeQualifiers(qualifiers)
+        this.subpath = normalizeSubpath(subpath)
     }
 
-    _handlePyPi() {
-        this.name = this.name.toLowerCase().replaceAll('_', '-')
-    }
     _handlePub() {
         const lowered = this.name.toLowerCase()
         if (!/^\w+$/.test(lowered)) {
@@ -118,9 +176,7 @@ class PackageURL {
 
     toString() {
         const { type } = this
-        if (type === 'pypi') {
-            this._handlePyPi()
-        } else if (type === 'pub') {
+        if (type === 'pub') {
             this._handlePub()
         }
         const { namespace, name, version, qualifiers, subpath } = this
@@ -161,88 +217,80 @@ class PackageURL {
         ) {
             throw new Error('A purl non-empty string argument is required.')
         }
-        const scheme = purl.slice(0, purl.indexOf(':'))
+
+        const colonIndex = purl.indexOf(':')
+        const scheme = colonIndex === -1 ? '' : purl.slice(0, colonIndex)
         if (scheme !== 'pkg') {
             throw new Error(
                 'purl is missing the required "pkg" scheme component.'
             )
         }
 
-        let remainder = purl.slice(purl.indexOf(':') + 1)
-        // this strip '/, // and /// as possible in :// or :///
-        // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-        remainder = remainder.trim().replace(/^\/+/g, '')
-
-        let type
-        ;({ 0: type, 1: remainder } = remainder.split('/', 2))
-        if (!type || !remainder) {
+        const afterProtocol = purl
+            .slice(colonIndex + 1)
+            // consolidate forward slashes
+            .replace(/\/{2,}/, '/')
+            // trim leading forward, e.g. :// or :///
+            .trim()
+            .replace(/^\/+/g, '')
+        const firstSlashIndex = afterProtocol.indexOf('/')
+        if (firstSlashIndex < 1) {
             throw new Error('purl is missing the required "type" component.')
         }
-        type = decodeURIComponent(type)
 
-        const url = new URL(purl)
-
-        const { searchParams } = url
-        let qualifiers = undefined
-        if (searchParams.size) {
-            qualifiers = {}
-            for (const { 0: key, 1: value } of searchParams) {
-                qualifiers[key] = value
-            }
-        }
-
-        let { hash: subpath } = url
-        if (subpath.indexOf('#') === 0) {
-            subpath = subpath.slice(1)
-        }
-        subpath = subpath.length === 0 ? undefined : decodeURIComponent(subpath)
-
+        const encodedType = afterProtocol
+            .slice(0, firstSlashIndex)
+            .toLowerCase()
+        const afterType = afterProtocol.slice(firstSlashIndex + 1)
+        const url = new URL(`pkg:${encodedType}/${afterType}`)
         if (url.username !== '' || url.password !== '') {
             throw new Error(
                 'Invalid purl: cannot contain a "user:pass@host:port"'
             )
         }
 
-        // this strip '/, // and /// as possible in :// or :///
-        // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-        const path = url.pathname.trim().replace(/^\/+/g, '')
+        const type = decodeURIComponent(encodedType)
+        const { hash, pathname, searchParams } = url
+        const trimmedHash = hash.startsWith('#') ? hash.slice(1) : hash
 
-        // version is optional - check for existence
-        let version = undefined
-        const atSignIndex = path.lastIndexOf('@')
+        let version
+        const atSignIndex = pathname.lastIndexOf('@')
         if (atSignIndex !== -1) {
-            const rawVersion = path.slice(atSignIndex + 1)
+            const rawVersion = pathname.slice(atSignIndex + 1)
             version = decodeURIComponent(rawVersion)
-
-            // Convert percent-encoded colons (:) back, to stay in line with the `toString`
-            // implementation of this library.
-            // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
-            const versionEncoded = encodeWithColonAndPlusSign(version)
-
-            if (rawVersion !== versionEncoded) {
+            // Convert percent-encoded colons (:) back, to stay in line with the `toString`.
+            if (rawVersion !== encodeWithColonAndPlusSign(version)) {
                 throw new Error('Invalid purl: version must be percent-encoded')
             }
-
-            remainder = path.slice(0, atSignIndex)
-        } else {
-            remainder = path
         }
 
-        // The 'remainder' should now consist of an optional namespace and the name
-        const remaining = remainder.split('/').slice(1)
         let name = ''
-        let namespace = undefined
-        if (remaining.length > 1) {
-            const nameIndex = remaining.length - 1
-            const namespaceComponents = remaining.slice(0, nameIndex)
-            name = decodeURIComponent(remaining[nameIndex])
-            namespace = decodeURIComponent(namespaceComponents.join('/'))
-        } else if (remaining.length === 1) {
-            name = decodeURIComponent(remaining[0])
+        let namespace
+        const beforeVersion = pathname.slice(
+            encodedType.length + 1,
+            atSignIndex === -1 ? pathname.length : atSignIndex
+        )
+        const lastSlashIndex = beforeVersion.lastIndexOf('/')
+        if (lastSlashIndex === -1) {
+            name = decodeURIComponent(beforeVersion)
+        } else {
+            namespace = decodeURIComponent(
+                beforeVersion.slice(0, lastSlashIndex)
+            )
+            name = decodeURIComponent(beforeVersion.slice(lastSlashIndex + 1))
         }
-
         if (name === '') {
             throw new Error('purl is missing the required "name" component.')
+        }
+
+        let qualifiers
+        if (searchParams.size !== 0) {
+            qualifiers = searchParams
+        }
+
+        let subpath
+        if (trimmedHash.length !== 0) {
+            subpath = decodeURIComponent(trimmedHash)
         }
 
         return new PackageURL(

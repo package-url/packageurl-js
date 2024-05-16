@@ -121,33 +121,33 @@ describe('PackageURL', function () {
             const purl = PackageURL.fromString(
                 'pkg:ty%2Fpe/namespace1/namespace2/na%2Fme'
             )
-            assert.strictEqual('ty/pe', purl.type)
-            assert.strictEqual('namespace1/namespace2', purl.namespace)
-            assert.strictEqual('na/me', purl.name)
+            assert.strictEqual(purl.type, 'ty/pe')
+            assert.strictEqual(purl.namespace, 'namespace1/namespace2')
+            assert.strictEqual(purl.name, 'na/me')
         })
 
         it('encoded #', function () {
             const purl = PackageURL.fromString(
                 'pkg:ty%23pe/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path'
             )
-            assert.strictEqual('ty#pe', purl.type)
-            assert.strictEqual('name#space', purl.namespace)
-            assert.strictEqual('na#me', purl.name)
-            assert.strictEqual('ver#sion', purl.version)
-            assert.deepStrictEqual({ foo: 'bar#baz' }, purl.qualifiers)
-            assert.strictEqual('sub#path', purl.subpath)
+            assert.strictEqual(purl.type, 'ty#pe')
+            assert.strictEqual(purl.namespace, 'name#space')
+            assert.strictEqual(purl.name, 'na#me')
+            assert.strictEqual(purl.version, 'ver#sion')
+            assert.deepStrictEqual(purl.qualifiers, { foo: 'bar#baz' })
+            assert.strictEqual(purl.subpath, 'sub#path')
         })
 
         it('encoded @', function () {
             const purl = PackageURL.fromString(
                 'pkg:ty%40pe/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path'
             )
-            assert.strictEqual('ty@pe', purl.type)
-            assert.strictEqual('name@space', purl.namespace)
-            assert.strictEqual('na@me', purl.name)
-            assert.strictEqual('ver@sion', purl.version)
-            assert.deepStrictEqual({ foo: 'bar@baz' }, purl.qualifiers)
-            assert.strictEqual('sub@path', purl.subpath)
+            assert.strictEqual(purl.type, 'ty@pe')
+            assert.strictEqual(purl.namespace, 'name@space')
+            assert.strictEqual(purl.name, 'na@me')
+            assert.strictEqual(purl.version, 'ver@sion')
+            assert.deepStrictEqual(purl.qualifiers, { foo: 'bar@baz' })
+            assert.strictEqual(purl.subpath, 'sub@path')
         })
     })
 
@@ -220,7 +220,7 @@ describe('PackageURL', function () {
                     assert.strictEqual(purl.toString(), obj.canonical_purl)
                 })
                 it('should be able to parse valid PackageURLs', function () {
-                    const purl = PackageURL.fromString(obj.canonical_purl)
+                    const purl = PackageURL.fromString(obj.purl)
                     assert.strictEqual(purl.toString(), obj.canonical_purl)
                     assert.strictEqual(purl.type, obj.type)
                     assert.strictEqual(purl.name, obj.name)
