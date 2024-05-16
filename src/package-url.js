@@ -62,6 +62,32 @@ class PackageURL {
         }
       });
     }
+    
+    if (type === 'conan') {
+      if (qualifiers) {
+        if (qualifiers.hasOwnProperty('channel') && !namespace) {
+          throw new Error('Invalid purl: conan has only channel qualifiers.');
+        }
+      }
+      if (namespace && !qualifiers) {
+        throw new Error('Invalid purl: conan has only namespace.');
+      } 
+    }
+
+    if (type === 'cran') {
+      if (!version) {
+        throw new Error('Invalid purl: cran requires a version.');
+      }
+    }
+
+    if (type === 'swift') {
+      if (!namespace) {
+	throw new Error('Invalid purl: swift has no namespace.');
+      }
+      if (!version) {
+	throw new Error('Invalid purl: swift requires a version.');
+      }
+    }
 
     this.type = type;
     this.name = name;
@@ -100,7 +126,7 @@ class PackageURL {
       purl.push('/');
     }
 
-    purl.push(encodeURIComponent(this.name).replace(/%3A/g, ':'));
+    purl.push(encodeURIComponent(this.name));
 
     if (this.version) {
       purl.push('@');
@@ -116,7 +142,7 @@ class PackageURL {
         qualifierString.push(
           encodeURIComponent(key).replace(/%3A/g, ':')
           + '='
-          + encodeURIComponent(qualifiers[key]).replace(/%2F/g, '/')
+          + encodeURIComponent(qualifiers[key]).replace(/%3A/g, ':').replace(/%2F/g, '/')
         );
       });
 
@@ -126,7 +152,6 @@ class PackageURL {
     if (this.subpath) {
       purl.push('#');
       purl.push(encodeURIComponent(this.subpath)
-        .replace(/%3A/g, ':')
         .replace(/%2F/g, '/'));
     }
 
@@ -185,15 +210,6 @@ class PackageURL {
       let index = path.indexOf('@');
       let rawVersion= path.substring(index + 1);
       version = decodeURIComponent(rawVersion);
-
-      // Convert percent-encoded colons (:) back, to stay in line with the `toString`
-      // implementation of this library.
-      // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
-      let versionEncoded = encodeURIComponent(version).replace(/%3A/g, ':').replace(/%2B/g,'+');
-
-      if (rawVersion !== versionEncoded) {
-        throw new Error('Invalid purl: version must be percent-encoded');
-      }
 
       remainder = path.substring(0, index);
     } else {
