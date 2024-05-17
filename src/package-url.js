@@ -31,6 +31,108 @@ const KnownQualifierNames = Object.freeze({
     Checksum: 'checksum'
 })
 
+const normalize = {
+    alpm(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    apk(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    bitbucket(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    bitnami(purl) {
+        lowerName(purl)
+    },
+    composer(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    debian(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    gitlab(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    github(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    golang(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    huggingface(purl) {
+        lowerVersion(purl)
+    },
+    npm(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+    },
+    pypi(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
+        // Replace all "_" with "-"
+        let name = ''
+        let fromIndex = 0
+        let index = 0
+        while ((index = purl.name.indexOf('_', fromIndex)) !== -1) {
+            name = name + purl.name.slice(fromIndex, index) + '-'
+            fromIndex = index + 1
+        }
+        if (fromIndex) {
+            purl.name = name + purl.name.slice(fromIndex)
+        }
+    },
+    qpkg(purl) {
+        lowerNamespace(purl)
+    },
+    rpm(purl) {
+        lowerNamespace(purl)
+    }
+}
+
+const validate = {
+    conan(purl) {
+        if (purl.namespace === undefined) {
+            if (typeof purl.qualifiers?.channel === 'string') {
+                throw new Error(
+                    'Invalid purl: conan requires a namespace when channel qualifiers are present.'
+                )
+            }
+        } else if (purl.qualifiers === undefined) {
+            throw new Error(
+                'Invalid purl: conan requires qualifiers when namespace is present.'
+            )
+        }
+    },
+    cran(purl) {
+        if (purl.version === undefined) {
+            throw new Error('Invalid purl: cran requires a version.')
+        }
+    },
+    pub(purl) {
+        if (/\W/.test(purl.name)) {
+            throw new Error(
+                'Invalid purl: "name" argument contains an illegal character.'
+            )
+        }
+    },
+    swift(purl) {
+        if (purl.namespace === undefined) {
+            throw new Error('Invalid purl: swift has no namespace.')
+        }
+        if (purl.version === undefined) {
+            throw new Error('Invalid purl: swift requires a version.')
+        }
+    }
+}
+
 function encodeWithColon(str) {
     return encodeURIComponent(str).replace(/%3A/g, ':')
 }
@@ -47,87 +149,35 @@ function encodeWithForwardSlash(str) {
     return encodeURIComponent(str).replace(/%2F/g, '/')
 }
 
-function normalizeName(name, type, qualifiers) {
-    if (
-        type === 'alpm' ||
-        type === 'apk' ||
-        type === 'bitbucket' ||
-        type === 'bitnami' ||
-        type === 'composer' ||
-        type === 'debian' ||
-        type === 'gitlab' ||
-        type === 'github' ||
-        type === 'golang' ||
-        type === 'npm'
-    ) {
-        return name.toLowerCase()
-    }
-    if (type === 'pypi') {
-        return name.toLowerCase().replaceAll('_', '-')
-    }
-    if (type === 'pub' && /\W/.test(name)) {
-        throw new Error(
-            'Invalid purl: "name" argument contains an illegal character.'
-        )
-    }
-    if (
-        qualifiers &&
-        Object.hasOwn(qualifiers, 'repository_url') &&
-        qualifiers.repository_url.includes('databricks')
-    ) {
-        return name.toLowerCase()
-    }
-    return name
+function lowerName(purl) {
+    purl.name = purl.name.toLowerCase()
 }
 
-function normalizeNamespace(namespace, type) {
-    if (typeof namespace !== 'string') {
-        return undefined
+function lowerNamespace(purl) {
+    const { namespace } = purl
+    if (typeof namespace === 'string') {
+        purl.namespace = namespace.toLowerCase()
     }
-    const normalized = normalizePath(namespace)
-    if (
-        type === 'alpm' ||
-        type === 'apk' ||
-        type === 'bitbucket' ||
-        type === 'composer' ||
-        type === 'debian' ||
-        type === 'gitlab' ||
-        type === 'github' ||
-        type === 'golang' ||
-        type === 'npm' ||
-        type === 'pypi' ||
-        type === 'qpkg' ||
-        type === 'rpm'
-    ) {
-        return normalized.toLowerCase()
-    }
-    return normalized
 }
 
-function normalizeQualifiers(qualifiers) {
-    if (qualifiers === null || qualifiers === undefined) {
-        return undefined
+function lowerVersion(purl) {
+    const { version } = purl
+    if (typeof version === 'string') {
+        purl.version = version.toLowerCase()
     }
-    if (typeof qualifiers !== 'object') {
-        throw new Error(
-            'Invalid purl: "qualifiers" argument must be a dictionary.'
-        )
+}
+
+function normalizeName(rawName, qualifiers) {
+    if (qualifiers?.repository_url?.includes('databricks')) {
+        return rawName.toLowerCase()
     }
-    const entries =
-        typeof qualifiers.entries === 'function'
-            ? qualifiers.entries()
-            : Object.entries(qualifiers)
-    const normalized = {}
-    for (const { 0: key, 1: value } of entries) {
-        const lowered = key.toLowerCase()
-        if (!/^[a-z]+$/.test(lowered) && !/[.-_]/.test(lowered)) {
-            throw new Error(
-                `Invalid purl: qualifier "${key}" contains an illegal character.`
-            )
-        }
-        normalized[lowered] = value
-    }
-    return normalized
+    return rawName
+}
+
+function normalizeNamespace(rawNamespace) {
+    return typeof rawNamespace === 'string'
+        ? normalizePath(rawNamespace)
+        : undefined
 }
 
 function normalizePath(pathname, callback) {
@@ -162,29 +212,55 @@ function normalizePath(pathname, callback) {
     return collapsed
 }
 
-function normalizeSubpath(subpath) {
-    return typeof subpath === 'string'
-        ? normalizePath(subpath, subpathFilter)
+function normalizeQualifiers(rawQualifiers) {
+    let qualifiers
+    if (typeof rawQualifiers === 'object' && rawQualifiers !== null) {
+        const entries =
+            typeof rawQualifiers.entries === 'function'
+                ? rawQualifiers.entries()
+                : Object.entries(rawQualifiers)
+        qualifiers = { __proto__: null }
+        for (const { 0: key, 1: value } of entries) {
+            // qualifiers:
+            // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
+            if (/^\d/.test(key)) {
+                throw new Error(
+                    `Invalid purl: qualifier "${key}" cannot start with a number.`
+                )
+            }
+            if (/[^-.\w]/.test(key)) {
+                throw new Error(
+                    `Invalid purl: qualifier "${key}" contains an illegal character.`
+                )
+            }
+            qualifiers[key.toLowerCase()] = value
+        }
+    } else if (rawQualifiers !== null && rawQualifiers !== undefined) {
+        throw new Error(
+            'Invalid purl: "qualifiers" argument must be an object.'
+        )
+    }
+    return qualifiers
+}
+
+function normalizeSubpath(rawSubpath) {
+    return typeof rawSubpath === 'string'
+        ? normalizePath(rawSubpath, subpathFilter)
         : undefined
 }
 
-function normalizeType(type) {
-    return type.trim().toLowerCase()
+function normalizeType(rawType) {
+    return rawType.trim().toLowerCase()
 }
 
-function normalizeVersion(version, type) {
-    if (typeof version !== 'string') {
-        return undefined
-    }
-    let normalized = version.trim()
-    if (type === 'huggingface') {
-        return normalized.toLowerCase()
-    }
-    return normalized
+function normalizeVersion(rawVersion) {
+    return typeof rawVersion === 'string' ? rawVersion.trim() : undefined
 }
 
 function subpathFilter(segment) {
-    return segment !== '.' && segment !== '..'
+    // subpath:
+    // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
+    return segment !== '.' && segment !== '..' && segment.trim().length !== 0
 }
 
 function trimLeadingSlashes(str) {
@@ -219,55 +295,41 @@ class PackageURL {
         return KnownQualifierNames
     }
 
-    constructor(type, namespace, name, version, qualifiers, subpath) {
-        validateRequired('type', type)
-        validateRequired('name', name)
+    constructor(
+        rawType,
+        rawNamespace,
+        rawName,
+        rawVersion,
+        rawQualifiers,
+        rawSubpath
+    ) {
+        validateRequired('type', rawType)
+        validateRequired('name', rawName)
 
-        validateStrings('type', type)
-        validateStrings('namespace', namespace)
-        validateStrings('name', name)
-        validateStrings('version', version)
-        validateStrings('subpath', subpath)
+        validateStrings('type', rawType)
+        validateStrings('namespace', rawNamespace)
+        validateStrings('name', rawName)
+        validateStrings('version', rawVersion)
+        validateStrings('subpath', rawSubpath)
 
-        const normType = normalizeType(type)
-        const normQualifiers = normalizeQualifiers(qualifiers)
-        const normName = normalizeName(name, normType, normQualifiers)
-        const normNamespace = normalizeNamespace(namespace, normType)
-        const normVersion = normalizeVersion(version, normType)
-        const normSubpath = normalizeSubpath(subpath)
+        const type = normalizeType(rawType)
+        const qualifiers = normalizeQualifiers(rawQualifiers)
 
-        if (normType === 'conan') {
-            if (normQualifiers) {
-                if (
-                    normNamespace === undefined &&
-                    Object.hasOwn(qualifiers, 'channel')
-                ) {
-                    throw new Error(
-                        'Invalid purl: conan has only channel qualifiers.'
-                    )
-                }
-            } else if (normNamespace) {
-                throw new Error('Invalid purl: conan has only namespace.')
-            }
-        } else if (normType === 'cran') {
-            if (normVersion === undefined) {
-                throw new Error('Invalid purl: cran requires a version.')
-            }
-        } else if (normType === 'swift') {
-            if (normNamespace === undefined) {
-                throw new Error('Invalid purl: swift has no namespace.')
-            }
-            if (normVersion === undefined) {
-                throw new Error('Invalid purl: swift requires a version.')
-            }
+        this.type = type
+        this.name = normalizeName(rawName, qualifiers)
+        this.namespace = normalizeNamespace(rawNamespace)
+        this.version = normalizeVersion(rawVersion)
+        this.qualifiers = qualifiers
+        this.subpath = normalizeSubpath(rawSubpath)
+
+        const normalizer = normalize[type]
+        if (typeof normalizer === 'function') {
+            normalizer(this)
         }
-
-        this.type = normType
-        this.name = normName
-        this.namespace = normNamespace
-        this.version = normVersion
-        this.qualifiers = normQualifiers
-        this.subpath = normSubpath
+        const validator = validate[type]
+        if (typeof validator === 'function') {
+            validator(this)
+        }
     }
 
     toString() {
@@ -382,5 +444,7 @@ class PackageURL {
         )
     }
 }
+
+Reflect.setPrototypeOf(PackageURL.prototype, null)
 
 module.exports = PackageURL
