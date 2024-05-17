@@ -21,7 +21,7 @@ SOFTWARE.
 */
 
 const assert = require('assert');
-const {describe, it} = require("mocha");
+const { describe, it } = require("mocha");
 
 const TEST_FILE = require('./data/test-suite-data.json');
 
@@ -32,18 +32,18 @@ describe('PackageURL', function () {
   describe('toString()', function () {
     it('all components encode #', function () {
       /* The # is a delimiter between url and subpath. */
-      var purl = new PackageURL('ty#pe', 'name#space', 'na#me', 'ver#sion', {'foo':'bar#baz'}, 'sub#path');
+      const purl = new PackageURL('ty#pe', 'name#space', 'na#me', 'ver#sion', {'foo':'bar#baz'}, 'sub#path');
       assert.strictEqual(purl.toString(), 'pkg:ty%23pe/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path')
     })
     it('all components encode @', function () {
       /* The @ is a delimiter between package name and version. */
-      var purl = new PackageURL('ty@pe', 'name@space', 'na@me', 'ver@sion', {'foo':'bar@baz'}, 'sub@path');
+      const purl = new PackageURL('ty@pe', 'name@space', 'na@me', 'ver@sion', {'foo':'bar@baz'}, 'sub@path');
       assert.strictEqual(purl.toString(), 'pkg:ty%40pe/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path')
     })
 
     it('path components encode /', function () {
       /* only namespace is allowed to have multiple segments separated by `/`` */
-      var purl = new PackageURL('ty/pe', 'namespace1/namespace2', 'na/me');
+      const purl = new PackageURL('ty/pe', 'namespace1/namespace2', 'na/me');
       assert.strictEqual(purl.toString(), 'pkg:ty%2Fpe/namespace1/namespace2/na%2Fme')
     })
   })
@@ -55,7 +55,7 @@ describe('PackageURL', function () {
       const purl = PackageURL.fromString(purlString)
 
       assert.strictEqual(purl.type, 'npm')
-      assert.strictEqual(purl.namespace, null)
+      assert.strictEqual(purl.namespace, undefined)
       assert.strictEqual(purl.name, 'packageurl-js')
       assert.strictEqual(purl.version, '0.0.7')
       assert.deepStrictEqual(purl.qualifiers, {
@@ -69,7 +69,7 @@ describe('PackageURL', function () {
       const purl = PackageURL.fromString(purlString)
 
       assert.strictEqual(purl.type, 'npm')
-      assert.strictEqual(purl.namespace, null)
+      assert.strictEqual(purl.namespace, undefined)
       assert.strictEqual(purl.name, 'packageurl-js')
       assert.strictEqual(purl.version, '0.0.7')
       assert.deepStrictEqual(purl.qualifiers, {
@@ -78,14 +78,14 @@ describe('PackageURL', function () {
     });
 
     it('namespace with multiple segments', function () {
-      var purl = PackageURL.fromString('pkg:ty%2Fpe/namespace1/namespace2/na%2Fme')
+      const purl = PackageURL.fromString('pkg:ty%2Fpe/namespace1/namespace2/na%2Fme')
       assert.strictEqual('ty/pe', purl.type)
       assert.strictEqual('namespace1/namespace2', purl.namespace)
       assert.strictEqual('na/me', purl.name)
     })
 
     it('encoded #', function () {
-      var purl = PackageURL.fromString('pkg:ty%23pe/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path')
+      const purl = PackageURL.fromString('pkg:ty%23pe/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path')
       assert.strictEqual('ty#pe', purl.type)
       assert.strictEqual('name#space', purl.namespace)
       assert.strictEqual('na#me', purl.name)
@@ -95,7 +95,7 @@ describe('PackageURL', function () {
     })
 
     it('encoded @', function () {
-      var purl = PackageURL.fromString('pkg:ty%40pe/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path')
+      const purl = PackageURL.fromString('pkg:ty%40pe/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path')
       assert.strictEqual('ty@pe', purl.type)
       assert.strictEqual('name@space', purl.namespace)
       assert.strictEqual('na@me', purl.name)
@@ -110,7 +110,7 @@ describe('PackageURL', function () {
       if (obj.is_invalid) {
         it('should not be possible to create invalid PackageURLs', function () {
           try {
-            var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
+            const purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
             assert.fail();
           } catch (e) {
             assert.ok(e.toString().includes('is a required field') || e.toString().includes('Invalid purl'));
@@ -125,27 +125,27 @@ describe('PackageURL', function () {
         });
       } else {
         it('should be able to create valid PackageURLs', function () {
-          var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
+          const purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
           assert.strictEqual(purl.type, obj.type);
           assert.strictEqual(purl.name, obj.name);
-          assert.strictEqual(purl.namespace, obj.namespace);
-          assert.strictEqual(purl.version, obj.version);
-          assert.deepStrictEqual(purl.qualifiers, obj.qualifiers);
-          assert.strictEqual(purl.subpath, obj.subpath, );
+          assert.strictEqual(purl.namespace, obj.namespace ?? undefined);
+          assert.strictEqual(purl.version, obj.version ?? undefined);
+          assert.deepStrictEqual(purl.qualifiers, obj.qualifiers ?? undefined);
+          assert.strictEqual(purl.subpath, obj.subpath ?? undefined);
         });
         it('should be able to convert valid PackageURLs to a string', function () {
-          var purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
+          const purl = new PackageURL(obj.type, obj.namespace, obj.name, obj.version, obj.qualifiers, obj.subpath);
           assert.strictEqual(purl.toString(), obj.canonical_purl);
         });
         it('should be able to parse valid PackageURLs', function () {
-          var purl = PackageURL.fromString(obj.canonical_purl);
+          const purl = PackageURL.fromString(obj.canonical_purl);
           assert.strictEqual(purl.toString(), obj.canonical_purl);
           assert.strictEqual(purl.type, obj.type);
           assert.strictEqual(purl.name, obj.name);
-          assert.strictEqual(purl.namespace, obj.namespace);
-          assert.strictEqual(purl.version, obj.version);
-          assert.deepStrictEqual(purl.qualifiers, obj.qualifiers);
-          assert.strictEqual(purl.subpath, obj.subpath);
+          assert.strictEqual(purl.namespace, obj.namespace ?? undefined);
+          assert.strictEqual(purl.version, obj.version ?? undefined);
+          assert.deepStrictEqual(purl.qualifiers, obj.qualifiers ?? undefined);
+          assert.strictEqual(purl.subpath, obj.subpath ?? undefined);
         });
         it('should handle pypi package-urls per the purl-spec', function () {
           const purlMixedCasing = PackageURL.fromString('pkg:pypi/PYYaml@5.3.0');
