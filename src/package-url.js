@@ -47,8 +47,19 @@ function encodeWithForwardSlash(str) {
     return encodeURIComponent(str).replace(/%2F/g, '/')
 }
 
-function normalizeName(name, type) {
-    if (type === 'bitbucket' || type === 'gitlab' || type === 'github') {
+function normalizeName(name, type, qualifiers) {
+    if (
+        type === 'alpm' ||
+        type === 'apk' ||
+        type === 'bitbucket' ||
+        type === 'bitnami' ||
+        type === 'composer' ||
+        type === 'debian' ||
+        type === 'gitlab' ||
+        type === 'github' ||
+        type === 'golang' ||
+        type === 'npm'
+    ) {
         return name.toLowerCase()
     }
     if (type === 'pypi') {
@@ -59,6 +70,13 @@ function normalizeName(name, type) {
             'Invalid purl: "name" argument contains an illegal character.'
         )
     }
+    if (
+        qualifiers &&
+        Object.hasOwn(qualifiers, 'repository_url') &&
+        qualifiers.repository_url.includes('databricks')
+    ) {
+        return name.toLowerCase()
+    }
     return name
 }
 
@@ -66,15 +84,24 @@ function normalizeNamespace(namespace, type) {
     if (typeof namespace !== 'string') {
         return undefined
     }
+    const normalized = normalizePath(namespace)
     if (
+        type === 'alpm' ||
+        type === 'apk' ||
         type === 'bitbucket' ||
+        type === 'composer' ||
+        type === 'debian' ||
         type === 'gitlab' ||
         type === 'github' ||
-        type === 'pypi'
+        type === 'golang' ||
+        type === 'npm' ||
+        type === 'pypi' ||
+        type === 'qpkg' ||
+        type === 'rpm'
     ) {
-        return namespace.toLowerCase()
+        return normalized.toLowerCase()
     }
-    return namespace
+    return normalized
 }
 
 function normalizeQualifiers(qualifiers) {
@@ -103,30 +130,69 @@ function normalizeQualifiers(qualifiers) {
     return normalized
 }
 
-function normalizeSubpath(subpath) {
-    if (typeof subpath !== 'string') {
-        return undefined
+function normalizePath(pathname, callback) {
+    let collapsed = ''
+    let start = 0
+    while (pathname.charCodeAt(start) === 47) {
+        start += 1
     }
-    const segments = subpath.split('/')
-    const filtered = []
-    for (let i = 0, { length } = segments; i < length; i += 1) {
-        const s = segments[i].trim()
-        if (s.length !== 0 && s !== '.' && s !== '..') {
-            filtered.push(s)
+    let nextIndex = pathname.indexOf('/', start)
+    if (nextIndex === -1) {
+        return pathname.slice(start)
+    }
+    while (nextIndex !== -1) {
+        const segment = pathname.slice(start, nextIndex)
+        if (callback === undefined || callback(segment)) {
+            collapsed =
+                collapsed + (collapsed.length === 0 ? '' : '/') + segment
         }
+        start = nextIndex + 1
+        while (pathname.charCodeAt(start) === 47) {
+            start += 1
+        }
+        nextIndex = pathname.indexOf('/', start)
     }
-    return filtered.join('/')
+    const lastSegment = pathname.slice(start)
+    if (
+        lastSegment.length !== 0 &&
+        (callback === undefined || callback(lastSegment))
+    ) {
+        collapsed = collapsed + '/' + lastSegment
+    }
+    return collapsed
+}
+
+function normalizeSubpath(subpath) {
+    return typeof subpath === 'string'
+        ? normalizePath(subpath, subpathFilter)
+        : undefined
 }
 
 function normalizeType(type) {
     return type.trim().toLowerCase()
 }
 
-function normalizeVersion(version) {
+function normalizeVersion(version, type) {
     if (typeof version !== 'string') {
         return undefined
     }
-    return version.trim()
+    let normalized = version.trim()
+    if (type === 'huggingface') {
+        return normalized.toLowerCase()
+    }
+    return normalized
+}
+
+function subpathFilter(segment) {
+    return segment !== '.' && segment !== '..'
+}
+
+function trimLeadingSlashes(str) {
+    let start = 0
+    while (str.charCodeAt(start) === 47) {
+        start += 1
+    }
+    return start === 0 ? str : str.slice(start)
 }
 
 function validateRequired(name, value) {
@@ -136,11 +202,16 @@ function validateRequired(name, value) {
 }
 
 function validateStrings(name, value) {
-    if (typeof value === 'string' ? value.length === 0 : value) {
-        throw new Error(
-            `Invalid purl: "'${name}" argument must be a non-empty string.`
-        )
+    if (
+        value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.length !== 0)
+    ) {
+        return
     }
+    throw new Error(
+        `Invalid purl: "'${name}" argument must be a non-empty string.`
+    )
 }
 
 class PackageURL {
@@ -158,35 +229,56 @@ class PackageURL {
         validateStrings('version', version)
         validateStrings('subpath', subpath)
 
-        this.type = normalizeType(type)
-        this.name = normalizeName(name, type)
-        this.namespace = normalizeNamespace(namespace, type)
-        this.version = normalizeVersion(version)
-        this.qualifiers = normalizeQualifiers(qualifiers)
-        this.subpath = normalizeSubpath(subpath)
-    }
+        const normType = normalizeType(type)
+        const normQualifiers = normalizeQualifiers(qualifiers)
+        const normName = normalizeName(name, normType, normQualifiers)
+        const normNamespace = normalizeNamespace(namespace, normType)
+        const normVersion = normalizeVersion(version, normType)
+        const normSubpath = normalizeSubpath(subpath)
 
-    _handlePub() {
-        const lowered = this.name.toLowerCase()
-        if (!/^\w+$/.test(lowered)) {
-            throw new Error('Invalid purl: contains an illegal character.')
+        if (normType === 'conan') {
+            if (normQualifiers) {
+                if (
+                    normNamespace === undefined &&
+                    Object.hasOwn(qualifiers, 'channel')
+                ) {
+                    throw new Error(
+                        'Invalid purl: conan has only channel qualifiers.'
+                    )
+                }
+            } else if (normNamespace) {
+                throw new Error('Invalid purl: conan has only namespace.')
+            }
+        } else if (normType === 'cran') {
+            if (normVersion === undefined) {
+                throw new Error('Invalid purl: cran requires a version.')
+            }
+        } else if (normType === 'swift') {
+            if (normNamespace === undefined) {
+                throw new Error('Invalid purl: swift has no namespace.')
+            }
+            if (normVersion === undefined) {
+                throw new Error('Invalid purl: swift requires a version.')
+            }
         }
-        this.name = lowered
+
+        this.type = normType
+        this.name = normName
+        this.namespace = normNamespace
+        this.version = normVersion
+        this.qualifiers = normQualifiers
+        this.subpath = normSubpath
     }
 
     toString() {
-        const { type } = this
-        if (type === 'pub') {
-            this._handlePub()
-        }
-        const { namespace, name, version, qualifiers, subpath } = this
+        const { namespace, name, version, qualifiers, subpath, type } = this
         let purl = `pkg:${encodeURIComponent(type)}/`
 
         if (namespace) {
             purl = `${purl}${encodeWithColonAndForwardSlash(namespace)}/`
         }
 
-        purl = `${purl}${encodeWithColon(name)}`
+        purl = `${purl}${encodeURIComponent(name)}`
 
         if (version) {
             purl = `${purl}@${encodeWithColonAndPlusSign(version)}`
@@ -197,13 +289,13 @@ class PackageURL {
             const qualifiersKeys = Object.keys(qualifiers).sort()
             for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
                 const key = qualifiersKeys[i]
-                qstr = `${qstr}${qstr.length ? '&' : ''}${encodeWithColon(key)}=${encodeWithForwardSlash(qualifiers[key])}`
+                qstr = `${qstr}${qstr.length ? '&' : ''}${encodeWithColon(key)}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
             }
             purl = `${purl}?${qstr}`
         }
 
         if (subpath) {
-            purl = `${purl}#${encodeWithColonAndForwardSlash(subpath)}`
+            purl = `${purl}#${encodeWithForwardSlash(subpath)}`
         }
 
         return purl
@@ -226,42 +318,29 @@ class PackageURL {
             )
         }
 
-        const afterProtocol = purl
-            .slice(colonIndex + 1)
-            // consolidate forward slashes
-            .replace(/\/{2,}/, '/')
-            // trim leading forward, e.g. :// or :///
-            .trim()
-            .replace(/^\/+/g, '')
+        const afterProtocol = trimLeadingSlashes(purl.slice(colonIndex + 1))
         const firstSlashIndex = afterProtocol.indexOf('/')
         if (firstSlashIndex < 1) {
             throw new Error('purl is missing the required "type" component.')
         }
 
-        const encodedType = afterProtocol
-            .slice(0, firstSlashIndex)
-            .toLowerCase()
-        const afterType = afterProtocol.slice(firstSlashIndex + 1)
-        const url = new URL(`pkg:${encodedType}/${afterType}`)
+        const url = new URL(`pkg:${afterProtocol}`)
         if (url.username !== '' || url.password !== '') {
             throw new Error(
                 'Invalid purl: cannot contain a "user:pass@host:port"'
             )
         }
 
+        const encodedType = afterProtocol.slice(0, firstSlashIndex)
         const type = decodeURIComponent(encodedType)
-        const { hash, pathname, searchParams } = url
-        const trimmedHash = hash.startsWith('#') ? hash.slice(1) : hash
+
+        const { hash, searchParams } = url
+        const pathname = url.pathname
 
         let version
         const atSignIndex = pathname.lastIndexOf('@')
         if (atSignIndex !== -1) {
-            const rawVersion = pathname.slice(atSignIndex + 1)
-            version = decodeURIComponent(rawVersion)
-            // Convert percent-encoded colons (:) back, to stay in line with the `toString`.
-            if (rawVersion !== encodeWithColonAndPlusSign(version)) {
-                throw new Error('Invalid purl: version must be percent-encoded')
-            }
+            version = decodeURIComponent(pathname.slice(atSignIndex + 1))
         }
 
         let name = ''
@@ -289,8 +368,8 @@ class PackageURL {
         }
 
         let subpath
-        if (trimmedHash.length !== 0) {
-            subpath = decodeURIComponent(trimmedHash)
+        if (hash.length !== 0) {
+            subpath = decodeURIComponent(hash.slice(1))
         }
 
         return new PackageURL(

@@ -23,7 +23,10 @@ SOFTWARE.
 const assert = require('assert')
 const { describe, it } = require('mocha')
 
-const TEST_FILE = require('./data/test-suite-data.json')
+const TEST_FILE = [
+    ...require('./data/test-suite-data.json'),
+    ...require('./data/contrib-tests.json')
+]
 
 /** @type {import('../src/package-url')} */
 const PackageURL = require('../src/package-url')

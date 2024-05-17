@@ -1,0 +1,122 @@
+[
+  {
+    "description": "valid go purl with namespace that has a forward slash",
+    "purl": "pkg:golang/github.com/etcd-io/etcd@v2.4.0",
+    "canonical_purl": "pkg:golang/github.com/etcd-io/etcd@v2.4.0",
+    "type": "golang",
+    "namespace": "github.com/etcd-io",
+    "name": "etcd",
+    "version": "v2.4.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "debian can have debian versions as part of version with plus sign",
+    "purl": "pkg:deb/debian/libssl1.1@1.1.1n-0+deb10u3?arch=amd64&distro=debian-10",
+    "canonical_purl": "pkg:deb/debian/libssl1.1@1.1.1n-0+deb10u3?arch=amd64&distro=debian-10",
+    "type": "deb",
+    "namespace": "debian",
+    "name": "libssl1.1",
+    "version": "1.1.1n-0+deb10u3",
+    "qualifiers": {"arch": "amd64", "distro": "debian-10"},
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "valid go purl with namespace that has more than one forward slash",
+    "purl": "pkg:golang/github.com/cncf/xds/go@v0.0.0-20210922020428-25de7278fc84",
+    "canonical_purl": "pkg:golang/github.com/cncf/xds/go@v0.0.0-20210922020428-25de7278fc84",
+    "type": "golang",
+    "namespace": "github.com/cncf/xds",
+    "name": "go",
+    "version": "v0.0.0-20210922020428-25de7278fc84",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "checks for invalid characters",
+    "purl": "pkg:pub/flutter_downloader@1.0.0",
+    "canonical_purl": "pkg:pub/flutter_downloader@1.0.0",
+    "type": "pub",
+    "namespace": null,
+    "name": "flutter_downloader",
+    "version": "1.0.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "namespace can contain special characters",
+    "purl": "pkg:npm/%40foo%40%3F%23/bar@1.0.0",
+    "canonical_purl": "pkg:npm/%40foo%40%3F%23/bar@1.0.0",
+    "type": "npm",
+    "namespace": "@foo@?#",
+    "name": "bar",
+    "version": "1.0.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "name can contain special characters (with namespace)",
+    "purl": "pkg:npm/%40foo/bar%40%3F%23@1.0.0",
+    "canonical_purl": "pkg:npm/%40foo/bar%40%3F%23@1.0.0",
+    "type": "npm",
+    "namespace": "@foo",
+    "name": "bar@?#",
+    "version": "1.0.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "name can contain special characters (without namespace)",
+    "purl": "pkg:npm/bar%40%3F%23@1.0.0",
+    "canonical_purl": "pkg:npm/bar%40%3F%23@1.0.0",
+    "type": "npm",
+    "namespace": null,
+    "name": "bar@?#",
+    "version": "1.0.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "version can contain special characters",
+    "purl": "pkg:npm/%40foo/bar@1.0.0-%40%3F%23",
+    "canonical_purl": "pkg:npm/%40foo/bar@1.0.0-%40%3F%23",
+    "type": "npm",
+    "namespace": "@foo",
+    "name": "bar",
+    "version": "1.0.0-@?#",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "improperly encoded version string",
+    "purl": "pkg:maven/org.apache.commons/io@1.4.0-$@",
+    "canonical_purl": "pkg:maven/org.apache.commons/io@1.4.0-$@",
+    "type": null,
+    "namespace": null,
+    "name": "io",
+    "version": "1.4.0-$@",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": true
+  },
+  {
+    "description": "In namespace, leading and trailing slashes '/' are not significant and should be stripped in the canonical form",
+    "purl": "pkg:golang//github.com/ll/xlog@2.0",
+    "canonical_purl": "pkg:golang/github.com/ll/xlog@2.0",
+    "type": "golang",
+    "namespace": "github.com/ll",
+    "name": "xlog",
+    "version": "2.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  }
+]
