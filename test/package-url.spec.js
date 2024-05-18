@@ -64,10 +64,24 @@ describe('PackageURL', function () {
     })
 
     describe('toString()', function () {
-        it('all components encode #', function () {
+        it('type is validated', function () {
+            ;['ty#pe', 'ty@pe', 'ty/pe', '1type'].forEach((type) => {
+                try {
+                    new PackageURL(type, undefined, 'name')
+                    assert.fail()
+                } catch (e) {
+                    // prettier-ignore
+                    assert.ok(
+                        e.toString().includes('contains an illegal character') ||
+                        e.toString().includes('cannot start with a number.')
+                    )
+                }
+            })
+        })
+        it('encode #', function () {
             /* The # is a delimiter between url and subpath. */
             const purl = new PackageURL(
-                'ty#pe',
+                'type',
                 'name#space',
                 'na#me',
                 'ver#sion',
@@ -76,13 +90,13 @@ describe('PackageURL', function () {
             )
             assert.strictEqual(
                 purl.toString(),
-                'pkg:ty%23pe/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path'
+                'pkg:type/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path'
             )
         })
-        it('all components encode @', function () {
+        it('encode @', function () {
             /* The @ is a delimiter between package name and version. */
             const purl = new PackageURL(
-                'ty@pe',
+                'type',
                 'name@space',
                 'na@me',
                 'ver@sion',
@@ -91,20 +105,20 @@ describe('PackageURL', function () {
             )
             assert.strictEqual(
                 purl.toString(),
-                'pkg:ty%40pe/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path'
+                'pkg:type/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path'
             )
         })
 
         it('path components encode /', function () {
             /* only namespace is allowed to have multiple segments separated by `/`` */
             const purl = new PackageURL(
-                'ty/pe',
+                'type',
                 'namespace1/namespace2',
                 'na/me'
             )
             assert.strictEqual(
                 purl.toString(),
-                'pkg:ty%2Fpe/namespace1/namespace2/na%2Fme'
+                'pkg:type/namespace1/namespace2/na%2Fme'
             )
         })
     })
@@ -153,18 +167,18 @@ describe('PackageURL', function () {
 
         it('namespace with multiple segments', function () {
             const purl = PackageURL.fromString(
-                'pkg:ty%2Fpe/namespace1/namespace2/na%2Fme'
+                'pkg:type/namespace1/namespace2/na%2Fme'
             )
-            assert.strictEqual(purl.type, 'ty/pe')
+            assert.strictEqual(purl.type, 'type')
             assert.strictEqual(purl.namespace, 'namespace1/namespace2')
             assert.strictEqual(purl.name, 'na/me')
         })
 
         it('encoded #', function () {
             const purl = PackageURL.fromString(
-                'pkg:ty%23pe/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path'
+                'pkg:type/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path'
             )
-            assert.strictEqual(purl.type, 'ty#pe')
+            assert.strictEqual(purl.type, 'type')
             assert.strictEqual(purl.namespace, 'name#space')
             assert.strictEqual(purl.name, 'na#me')
             assert.strictEqual(purl.version, 'ver#sion')
@@ -177,9 +191,9 @@ describe('PackageURL', function () {
 
         it('encoded @', function () {
             const purl = PackageURL.fromString(
-                'pkg:ty%40pe/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path'
+                'pkg:type/name%40space/na%40me@ver%40sion?foo=bar%40baz#sub%40path'
             )
-            assert.strictEqual(purl.type, 'ty@pe')
+            assert.strictEqual(purl.type, 'type')
             assert.strictEqual(purl.namespace, 'name@space')
             assert.strictEqual(purl.name, 'na@me')
             assert.strictEqual(purl.version, 'ver@sion')
@@ -207,9 +221,10 @@ describe('PackageURL', function () {
                             )
                             assert.fail()
                         } catch (e) {
+                            // prettier-ignore
                             assert.ok(
                                 e.toString().includes('is a required field') ||
-                                    e.toString().includes('Invalid purl')
+                                e.toString().includes('Invalid purl')
                             )
                         }
                     })
@@ -217,12 +232,10 @@ describe('PackageURL', function () {
                         try {
                             PackageURL.fromString(obj.purl)
                         } catch (e) {
+                            // prettier-ignore
                             assert.ok(
-                                e
-                                    .toString()
-                                    .includes(
-                                        'Error: purl is missing the required'
-                                    ) || e.toString().includes('Invalid purl')
+                                e.toString().includes('Error: purl is missing the required') ||
+                                e.toString().includes('Invalid purl')
                             )
                         }
                     })

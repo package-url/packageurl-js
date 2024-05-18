@@ -99,42 +99,35 @@ const normalize = {
 
 const validate = {
     conan(purl) {
-        if (purl.namespace === undefined) {
-            if (typeof purl.qualifiers?.channel === 'string') {
+        if (!purl.namespace) {
+            if (purl.qualifiers?.channel) {
                 throw new Error(
-                    'Invalid purl: conan requires a namespace when channel qualifiers are present.'
+                    'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
                 )
             }
-        } else if (purl.qualifiers === undefined) {
+        } else if (!purl.qualifiers) {
             throw new Error(
-                'Invalid purl: conan requires qualifiers when namespace is present.'
+                'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
             )
         }
     },
     cran(purl) {
-        if (purl.version === undefined) {
-            throw new Error('Invalid purl: cran requires a version.')
-        }
+        validateRequiredByType('cran', 'version', purl.version)
+    },
+    maven(purl) {
+        validateRequiredByType('maven', 'namespace', purl.namespace)
     },
     pub(purl) {
-        if (/\W/.test(purl.name)) {
+        if (/[^a-z0-9_]/.test(purl.name)) {
             throw new Error(
-                'Invalid purl: "name" argument contains an illegal character.'
+                'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
             )
         }
     },
     swift(purl) {
-        if (purl.namespace === undefined) {
-            throw new Error('Invalid purl: swift has no namespace.')
-        }
-        if (purl.version === undefined) {
-            throw new Error('Invalid purl: swift requires a version.')
-        }
+        validateRequiredByType('swift', 'namespace', purl.namespace)
+        validateRequiredByType('swift', 'version', purl.version)
     }
-}
-
-function encodeWithColon(str) {
-    return encodeURIComponent(str).replace(/%3A/g, ':')
 }
 
 function encodeWithColonAndForwardSlash(str) {
@@ -168,21 +161,24 @@ function lowerVersion(purl) {
 }
 
 function normalizeName(rawName, qualifiers) {
-    if (qualifiers?.repository_url?.includes('databricks')) {
-        return rawName.toLowerCase()
-    }
-    return rawName
+    return decodeURIComponent(
+        qualifiers?.repository_url?.includes('databricks')
+            ? rawName.toLowerCase()
+            : rawName
+    )
 }
 
 function normalizeNamespace(rawNamespace) {
     return typeof rawNamespace === 'string'
-        ? normalizePath(rawNamespace)
+        ? normalizePath(decodeURIComponent(rawNamespace))
         : undefined
 }
 
 function normalizePath(pathname, callback) {
     let collapsed = ''
     let start = 0
+    // Leading and trailing slashes '/' are not significant and should be
+    // stripped in the canonical form.
     while (pathname.charCodeAt(start) === 47) {
         start += 1
     }
@@ -190,6 +186,7 @@ function normalizePath(pathname, callback) {
     if (nextIndex === -1) {
         return pathname.slice(start)
     }
+    // Collapse segment separator slashes '/'.
     while (nextIndex !== -1) {
         const segment = pathname.slice(start, nextIndex)
         if (callback === undefined || callback(segment)) {
@@ -213,53 +210,57 @@ function normalizePath(pathname, callback) {
 }
 
 function normalizeQualifiers(rawQualifiers) {
-    let qualifiers
-    if (typeof rawQualifiers === 'object' && rawQualifiers !== null) {
-        const entries =
-            typeof rawQualifiers.entries === 'function'
-                ? rawQualifiers.entries()
-                : Object.entries(rawQualifiers)
-        qualifiers = { __proto__: null }
-        for (const { 0: key, 1: value } of entries) {
-            // qualifiers:
-            // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
-            if (/^\d/.test(key)) {
-                throw new Error(
-                    `Invalid purl: qualifier "${key}" cannot start with a number.`
-                )
-            }
-            if (/[^-.\w]/.test(key)) {
-                throw new Error(
-                    `Invalid purl: qualifier "${key}" contains an illegal character.`
-                )
-            }
-            qualifiers[key.toLowerCase()] = value
-        }
-    } else if (rawQualifiers !== null && rawQualifiers !== undefined) {
+    if (rawQualifiers === null || rawQualifiers === undefined) {
+        return undefined
+    }
+    if (typeof rawQualifiers !== 'object') {
         throw new Error(
             'Invalid purl: "qualifiers" argument must be an object.'
         )
+    }
+    const entries =
+        // URL searchParams have an "entries" method.
+        typeof rawQualifiers.entries === 'function'
+            ? rawQualifiers.entries()
+            : Object.entries(rawQualifiers)
+    const qualifiers = { __proto__: null }
+    for (const { 0: key, 1: value } of entries) {
+        const strValue = typeof value === 'string' ? value : String(value)
+        const trimmed = strValue.trim()
+        // Value cannot be an empty string: a key=value pair with an empty value
+        // is the same as no key/value at all for this key.
+        if (trimmed.length === 0) continue
+        validateQualifierKey(key)
+        // A key is case insensitive. The canonical form is lowercase.
+        qualifiers[key.toLowerCase()] = trimmed
     }
     return qualifiers
 }
 
 function normalizeSubpath(rawSubpath) {
     return typeof rawSubpath === 'string'
-        ? normalizePath(rawSubpath, subpathFilter)
+        ? normalizePath(decodeURIComponent(rawSubpath), subpathFilter)
         : undefined
 }
 
 function normalizeType(rawType) {
-    return rawType.trim().toLowerCase()
+    // The type must NOT be percent-encoded.
+    // The type is case insensitive. The canonical form is lowercase.
+    const type = decodeURIComponent(rawType).trim().toLowerCase()
+    validateType(type)
+    return type
 }
 
 function normalizeVersion(rawVersion) {
-    return typeof rawVersion === 'string' ? rawVersion.trim() : undefined
+    return typeof rawVersion === 'string'
+        ? decodeURIComponent(rawVersion).trim()
+        : undefined
 }
 
 function subpathFilter(segment) {
-    // subpath:
-    // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
+    // When percent-decoded, a segment
+    //   - must not be any of '..' or '.'
+    //   - must not be empty
     return segment !== '.' && segment !== '..' && segment.trim().length !== 0
 }
 
@@ -277,6 +278,32 @@ function validateRequired(name, value) {
     }
 }
 
+function validateRequiredByType(type, name, value) {
+    if (!value) {
+        throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
+    }
+}
+
+function validateNonNumeric(name, value) {
+    if (/^\d/.test(value)) {
+        throw new Error(
+            `Invalid purl: ${name} "${value}" cannot start with a number.`
+        )
+    }
+}
+
+function validateQualifierKey(key) {
+    // The key must be composed only of ASCII letters and numbers,
+    // '.', '-' and '_' (period, dash and underscore).
+    if (/[^\w.-]/.test(key)) {
+        throw new Error(
+            `Invalid purl: qualifier "${key}" contains an illegal character.`
+        )
+    }
+    // A key cannot start with a number.
+    validateNonNumeric('qualifier', key)
+}
+
 function validateStrings(name, value) {
     if (
         value === null ||
@@ -288,6 +315,18 @@ function validateStrings(name, value) {
     throw new Error(
         `Invalid purl: "'${name}" argument must be a non-empty string.`
     )
+}
+
+function validateType(type) {
+    // The package type is composed only of ASCII letters and numbers,
+    // '.', '+' and '-' (period, plus, and dash)
+    if (/[^a-zA-Z0-9.+-]/.test(type)) {
+        throw new Error(
+            `Invalid purl: type "${type}" contains an illegal character.`
+        )
+    }
+    // The type cannot start with a number.
+    validateNonNumeric('type', type)
 }
 
 class PackageURL {
@@ -348,10 +387,11 @@ class PackageURL {
 
         if (qualifiers) {
             let qstr = ''
+            // Sort this list of qualifier strings lexicographically.
             const qualifiersKeys = Object.keys(qualifiers).sort()
             for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
                 const key = qualifiersKeys[i]
-                qstr = `${qstr}${qstr.length ? '&' : ''}${encodeWithColon(key)}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
+                qstr = `${qstr}${qstr.length ? '&' : ''}${key}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
             }
             purl = `${purl}?${qstr}`
         }
@@ -372,6 +412,7 @@ class PackageURL {
             throw new Error('A purl non-empty string argument is required.')
         }
 
+        // The scheme is a constant with the value "pkg"
         const colonIndex = purl.indexOf(':')
         const scheme = colonIndex === -1 ? '' : purl.slice(0, colonIndex)
         if (scheme !== 'pkg') {
@@ -380,6 +421,10 @@ class PackageURL {
             )
         }
 
+        // Since a purl never contains a URL Authority, its scheme must not be
+        // suffixed with double slash as in 'pkg://' and should use instead 'pkg:'.
+        //   - purl parsers must accept URLs such as 'pkg://' and must ignore the '//'.
+        //   - The scheme is followed by a ':' separator.
         const afterProtocol = trimLeadingSlashes(purl.slice(colonIndex + 1))
         const firstSlashIndex = afterProtocol.indexOf('/')
         if (firstSlashIndex < 1) {
@@ -387,51 +432,51 @@ class PackageURL {
         }
 
         const url = new URL(`pkg:${afterProtocol}`)
+        // A purl must NOT contain a URL Authority i.e. there is no support for
+        // username, password, host and port components.
         if (url.username !== '' || url.password !== '') {
             throw new Error(
                 'Invalid purl: cannot contain a "user:pass@host:port"'
             )
         }
 
-        const encodedType = afterProtocol.slice(0, firstSlashIndex)
-        const type = decodeURIComponent(encodedType)
-
-        const { hash, searchParams } = url
-        const pathname = url.pathname
-
-        let version
-        const atSignIndex = pathname.lastIndexOf('@')
-        if (atSignIndex !== -1) {
-            version = decodeURIComponent(pathname.slice(atSignIndex + 1))
-        }
+        const { pathname } = url
+        const type = afterProtocol.slice(0, firstSlashIndex)
 
         let name = ''
         let namespace
+        // Split the remainder once from right on '@'.
+        const atSignIndex = pathname.lastIndexOf('@')
         const beforeVersion = pathname.slice(
-            encodedType.length + 1,
+            type.length + 1,
             atSignIndex === -1 ? pathname.length : atSignIndex
         )
         const lastSlashIndex = beforeVersion.lastIndexOf('/')
         if (lastSlashIndex === -1) {
-            name = decodeURIComponent(beforeVersion)
+            name = beforeVersion
         } else {
-            namespace = decodeURIComponent(
-                beforeVersion.slice(0, lastSlashIndex)
-            )
-            name = decodeURIComponent(beforeVersion.slice(lastSlashIndex + 1))
+            namespace = beforeVersion.slice(0, lastSlashIndex)
+            name = beforeVersion.slice(lastSlashIndex + 1)
         }
         if (name === '') {
             throw new Error('purl is missing the required "name" component.')
         }
 
+        let version
+        if (atSignIndex !== -1) {
+            version = pathname.slice(atSignIndex + 1)
+        }
+
         let qualifiers
+        const { searchParams } = url
         if (searchParams.size !== 0) {
             qualifiers = searchParams
         }
 
         let subpath
+        const { hash } = url
         if (hash.length !== 0) {
-            subpath = decodeURIComponent(hash.slice(1))
+            subpath = hash.slice(1)
         }
 
         return new PackageURL(
