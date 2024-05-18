@@ -77,6 +77,16 @@ describe('PackageURL', function () {
       })
     });
 
+    it('npm PURL with namespace starting with @', function () {
+      const purlString = 'pkg:npm/@aws-crypto/crc32@3.0.0'
+      const purl = PackageURL.fromString(purlString)
+
+      assert.strictEqual(purl.type, 'npm')
+      assert.strictEqual(purl.namespace, '@aws-crypto')
+      assert.strictEqual(purl.name, 'crc32')
+      assert.strictEqual(purl.version, '3.0.0')
+    });
+
     it('namespace with multiple segments', function () {
       const purl = PackageURL.fromString('pkg:ty%2Fpe/namespace1/namespace2/na%2Fme')
       assert.strictEqual('ty/pe', purl.type)
