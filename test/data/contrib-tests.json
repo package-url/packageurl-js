@@ -1,5 +1,17 @@
 [
   {
+    "description": "scheme is lowercased",
+    "purl": "PkG:npm/foo/bar@1.0.0",
+    "canonical_purl": "pkg:npm/foo/bar@1.0.0",
+    "type": "npm",
+    "namespace": "foo",
+    "name": "bar",
+    "version": "1.0.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
     "description": "valid go purl with namespace that has a forward slash",
     "purl": "pkg:golang/github.com/etcd-io/etcd@v2.4.0",
     "canonical_purl": "pkg:golang/github.com/etcd-io/etcd@v2.4.0",
@@ -36,7 +48,7 @@
     "is_invalid": false
   },
   {
-    "description": "checks for invalid characters",
+    "description": "validates pub name (valid)",
     "purl": "pkg:pub/flutter_downloader@1.0.0",
     "canonical_purl": "pkg:pub/flutter_downloader@1.0.0",
     "type": "pub",
@@ -46,6 +58,18 @@
     "qualifiers": null,
     "subpath": null,
     "is_invalid": false
+  },
+  {
+    "description": "validates pub name (invalid)",
+    "purl": "pkg:pub/flutter-downloader@1.0.0",
+    "canonical_purl": "pkg:pub/flutter-downloader@1.0.0",
+    "type": "pub",
+    "namespace": null,
+    "name": "flutter-downloader",
+    "version": "1.0.0",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": true
   },
   {
     "description": "namespace can contain special characters",

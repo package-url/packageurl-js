@@ -414,7 +414,9 @@ class PackageURL {
 
         // The scheme is a constant with the value "pkg"
         const colonIndex = purl.indexOf(':')
-        const scheme = colonIndex === -1 ? '' : purl.slice(0, colonIndex)
+        // The left side lowercased is the scheme.
+        const scheme =
+            colonIndex === -1 ? '' : purl.slice(0, colonIndex).toLowerCase()
         if (scheme !== 'pkg') {
             throw new Error(
                 'purl is missing the required "pkg" scheme component.'
