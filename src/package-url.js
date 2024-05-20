@@ -81,12 +81,13 @@ const normalize = {
         let name = ''
         let fromIndex = 0
         let index = 0
-        while ((index = purl.name.indexOf('_', fromIndex)) !== -1) {
-            name = name + purl.name.slice(fromIndex, index) + '-'
+        const { name: oldName } = purl
+        while ((index = oldName.indexOf('_', fromIndex)) !== -1) {
+            name = name + oldName.slice(fromIndex, index) + '-'
             fromIndex = index + 1
         }
         if (fromIndex) {
-            purl.name = name + purl.name.slice(fromIndex)
+            purl.name = name + oldName.slice(fromIndex)
         }
     },
     qpkg(purl) {
@@ -99,13 +100,13 @@ const normalize = {
 
 const validate = {
     conan(purl) {
-        if (!purl.namespace) {
+        if (isEmpty(purl.namespace)) {
             if (purl.qualifiers?.channel) {
                 throw new Error(
                     'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
                 )
             }
-        } else if (!purl.qualifiers) {
+        } else if (isEmpty(purl.qualifiers)) {
             throw new Error(
                 'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
             )
@@ -118,10 +119,23 @@ const validate = {
         validateRequiredByType('maven', 'namespace', purl.namespace)
     },
     pub(purl) {
-        if (/[^a-z0-9_]/.test(purl.name)) {
-            throw new Error(
-                'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
-            )
+        const { name } = purl
+        for (let i = 0, { length } = name; i < length; i += 1) {
+            const code = name.charCodeAt(i)
+            // prettier-ignore
+            if (
+                !(
+                    (
+                        (code >= 48 && code <= 57)  || // 0-9
+                        (code >= 97 && code <= 122) || // a-z
+                        code === 95 // _
+                    )
+                )
+            ) {
+                throw new Error(
+                    'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
+                )
+            }
         }
     },
     swift(purl) {
@@ -140,6 +154,57 @@ function encodeWithColonAndPlusSign(str) {
 
 function encodeWithForwardSlash(str) {
     return encodeURIComponent(str).replace(/%2F/g, '/')
+}
+
+function isBlank(str) {
+    for (let i = 0, { length } = str; i < length; i += 1) {
+        const code = str.charCodeAt(i)
+        // prettier-ignore
+        if (
+            !(
+                // Whitespace characters according to ECMAScript spec:
+                // https://tc39.es/ecma262/#sec-white-space
+                (
+                    code === 0x0020 || // Space
+                    code === 0x0009 || // Tab
+                    code === 0x000a || // Line Feed
+                    code === 0x000b || // Vertical Tab
+                    code === 0x000c || // Form Feed
+                    code === 0x000d || // Carriage Return
+                    code === 0x00a0 || // No-Break Space
+                    code === 0x1680 || // Ogham Space Mark
+                    code === 0x2000 || // En Quad
+                    code === 0x2001 || // Em Quad
+                    code === 0x2002 || // En Space
+                    code === 0x2003 || // Em Space
+                    code === 0x2004 || // Three-Per-Em Space
+                    code === 0x2005 || // Four-Per-Em Space
+                    code === 0x2006 || // Six-Per-Em Space
+                    code === 0x2007 || // Figure Space
+                    code === 0x2008 || // Punctuation Space
+                    code === 0x2009 || // Thin Space
+                    code === 0x200a || // Hair Space
+                    code === 0x2028 || // Line Separator
+                    code === 0x2029 || // Paragraph Separator
+                    code === 0x202f || // Narrow No-Break Space
+                    code === 0x205f || // Medium Mathematical Space
+                    code === 0x3000 || // Ideographic Space
+                    code === 0xfeff    // Byte Order Mark
+                )
+            )
+        ) {
+            return false
+        }
+    }
+    return true
+}
+
+function isEmpty(value) {
+    return (
+        value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.length === 0)
+    )
 }
 
 function lowerName(purl) {
@@ -186,7 +251,8 @@ function normalizePath(pathname, callback) {
     if (nextIndex === -1) {
         return pathname.slice(start)
     }
-    // Collapse segment separator slashes '/'.
+    // Discard any empty string segments by collapsing repeated segment
+    // separator slashes '/'.
     while (nextIndex !== -1) {
         const segment = pathname.slice(start, nextIndex)
         if (callback === undefined || callback(segment)) {
@@ -259,9 +325,17 @@ function normalizeVersion(rawVersion) {
 
 function subpathFilter(segment) {
     // When percent-decoded, a segment
-    //   - must not be any of '..' or '.'
+    //   - must not be any of '.' or '..'
     //   - must not be empty
-    return segment !== '.' && segment !== '..' && segment.trim().length !== 0
+    const { length } = segment
+    if (length === 1 && segment.charCodeAt(0) === 46) return false
+    if (
+        length === 2 &&
+        segment.charCodeAt(0) === 46 &&
+        segment.charCodeAt(1) === 46
+    )
+        return false
+    return !isBlank(segment)
 }
 
 function trimLeadingSlashes(str) {
@@ -273,35 +347,53 @@ function trimLeadingSlashes(str) {
 }
 
 function validateRequired(name, value) {
-    if (!value) {
+    if (isEmpty(value)) {
         throw new Error(`Invalid purl: "${name}" is a required field.`)
     }
 }
 
 function validateRequiredByType(type, name, value) {
-    if (!value) {
+    if (isEmpty(value)) {
         throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
     }
 }
 
-function validateNonNumeric(name, value) {
-    if (/^\d/.test(value)) {
-        throw new Error(
-            `Invalid purl: ${name} "${value}" cannot start with a number.`
-        )
+function validateStartsWithoutNumber(name, value) {
+    if (value.length !== 0) {
+        const code = value.charCodeAt(0)
+        if (code >= 48 /*0*/ && code <= 57 /*9*/) {
+            throw new Error(
+                `Invalid purl: ${name} "${value}" cannot start with a number.`
+            )
+        }
     }
 }
 
 function validateQualifierKey(key) {
+    // A key cannot start with a number.
+    validateStartsWithoutNumber('qualifier', key)
     // The key must be composed only of ASCII letters and numbers,
     // '.', '-' and '_' (period, dash and underscore).
-    if (/[^\w.-]/.test(key)) {
-        throw new Error(
-            `Invalid purl: qualifier "${key}" contains an illegal character.`
-        )
+    for (let i = 0, { length } = key; i < length; i += 1) {
+        const code = key.charCodeAt(i)
+        // prettier-ignore
+        if (
+            !(
+                (
+                    (code >= 48 && code <= 57)  || // 0-9
+                    (code >= 65 && code <= 90)  || // A-Z
+                    (code >= 97 && code <= 122) || // a-z
+                    code === 46 || // .
+                    code === 45 || // -
+                    code === 95    // _
+                )
+            )
+        ) {
+            throw new Error(
+                `Invalid purl: qualifier "${key}" contains an illegal character.`
+            )
+        }
     }
-    // A key cannot start with a number.
-    validateNonNumeric('qualifier', key)
 }
 
 function validateStrings(name, value) {
@@ -318,15 +410,30 @@ function validateStrings(name, value) {
 }
 
 function validateType(type) {
+    // The type cannot start with a number.
+    validateStartsWithoutNumber('type', type)
     // The package type is composed only of ASCII letters and numbers,
     // '.', '+' and '-' (period, plus, and dash)
-    if (/[^a-zA-Z0-9.+-]/.test(type)) {
-        throw new Error(
-            `Invalid purl: type "${type}" contains an illegal character.`
-        )
+    for (let i = 0, { length } = type; i < length; i += 1) {
+        const code = type.charCodeAt(i)
+        // prettier-ignore
+        if (
+            !(
+                (
+                    (code >= 48 && code <= 57)  || // 0-9
+                    (code >= 65 && code <= 90)  || // A-Z
+                    (code >= 97 && code <= 122) || // a-z
+                    code === 46 || // .
+                    code === 43 || // +
+                    code === 45    // -
+                )
+            )
+        ) {
+            throw new Error(
+                `Invalid purl: type "${type}" contains an illegal character.`
+            )
+        }
     }
-    // The type cannot start with a number.
-    validateNonNumeric('type', type)
 }
 
 class PackageURL {
@@ -362,6 +469,8 @@ class PackageURL {
         this.subpath = normalizeSubpath(rawSubpath)
 
         const normalizer = normalize[type]
+        // Apply type-specific normalization to the name if needed.
+        // Apply type-specific normalization to each namespace segment if needed.
         if (typeof normalizer === 'function') {
             normalizer(this)
         }
@@ -374,49 +483,41 @@ class PackageURL {
     toString() {
         const { namespace, name, version, qualifiers, subpath, type } = this
         let purl = `pkg:${encodeURIComponent(type)}/`
-
         if (namespace) {
             purl = `${purl}${encodeWithColonAndForwardSlash(namespace)}/`
         }
-
         purl = `${purl}${encodeURIComponent(name)}`
-
         if (version) {
             purl = `${purl}@${encodeWithColonAndPlusSign(version)}`
         }
-
         if (qualifiers) {
-            let qstr = ''
+            let query = ''
             // Sort this list of qualifier strings lexicographically.
             const qualifiersKeys = Object.keys(qualifiers).sort()
             for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
                 const key = qualifiersKeys[i]
-                qstr = `${qstr}${qstr.length ? '&' : ''}${key}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
+                query = `${query}${i === 0 ? '' : '&'}${key}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
             }
-            purl = `${purl}?${qstr}`
+            purl = `${purl}?${query}`
         }
-
         if (subpath) {
             purl = `${purl}#${encodeWithForwardSlash(subpath)}`
         }
-
         return purl
     }
 
     static fromString(purl) {
-        if (
-            typeof purl !== 'string' ||
-            purl.length === 0 ||
-            purl.trim().length === 0
-        ) {
+        // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#how-to-parse-a-purl-string-in-its-components
+        if (typeof purl !== 'string' || isBlank(purl)) {
             throw new Error('A purl non-empty string argument is required.')
         }
 
-        // The scheme is a constant with the value "pkg"
+        // Split the remainder once from left on ':'.
         const colonIndex = purl.indexOf(':')
         // The left side lowercased is the scheme.
         const scheme =
             colonIndex === -1 ? '' : purl.slice(0, colonIndex).toLowerCase()
+        // The scheme is a constant with the value "pkg"
         if (scheme !== 'pkg') {
             throw new Error(
                 'purl is missing the required "pkg" scheme component.'
@@ -433,6 +534,7 @@ class PackageURL {
             throw new Error('purl is missing the required "type" component.')
         }
 
+        // Use WHATGW URL to split up the purl string.
         const url = new URL(`pkg:${afterProtocol}`)
         // A purl must NOT contain a URL Authority i.e. there is no support for
         // username, password, host and port components.
@@ -443,22 +545,24 @@ class PackageURL {
         }
 
         const { pathname } = url
+
         const type = afterProtocol.slice(0, firstSlashIndex)
 
         let name = ''
         let namespace
-        // Split the remainder once from right on '@'.
         const atSignIndex = pathname.lastIndexOf('@')
         const beforeVersion = pathname.slice(
             type.length + 1,
             atSignIndex === -1 ? pathname.length : atSignIndex
         )
+        // Split the remainder once from right on '/'.
         const lastSlashIndex = beforeVersion.lastIndexOf('/')
         if (lastSlashIndex === -1) {
             name = beforeVersion
         } else {
-            namespace = beforeVersion.slice(0, lastSlashIndex)
             name = beforeVersion.slice(lastSlashIndex + 1)
+            // Split the remainder on '/'.
+            namespace = beforeVersion.slice(0, lastSlashIndex)
         }
         if (name === '') {
             throw new Error('purl is missing the required "name" component.')
@@ -466,18 +570,21 @@ class PackageURL {
 
         let version
         if (atSignIndex !== -1) {
+            // Split the remainder once from right on '@'.
             version = pathname.slice(atSignIndex + 1)
         }
 
         let qualifiers
         const { searchParams } = url
         if (searchParams.size !== 0) {
+            // Split the remainder once from right on '?'.
             qualifiers = searchParams
         }
 
         let subpath
         const { hash } = url
         if (hash.length !== 0) {
+            // Split the purl string once from right on '#'.
             subpath = hash.slice(1)
         }
 
