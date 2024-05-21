@@ -164,12 +164,14 @@ class PackageURL {
 
     let type
     ({ 0: type, 1: remainder } = remainder.split('/', 2));
-    if (!type || !remainder) {
+    if (!type) {
       throw new Error('purl is missing the required "type" component.');
     }
     type = decodeURIComponent(type);
 
-    const url = new URL(purl);
+    // this strip '/, // and /// as possible in :// or :///
+    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
+    const url = new URL(purl.trim().replace(/^pkg:\/+/g, 'pkg:'));
 
     const { searchParams } = url;
     let qualifiers = undefined;
@@ -192,9 +194,7 @@ class PackageURL {
       throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
     }
 
-    // this strip '/, // and /// as possible in :// or :///
-    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    const path = url.pathname.trim().replace(/^\/+/g, '');
+    const path = url.pathname.trim();
 
     // version is optional - check for existence
     let version = undefined;
@@ -225,7 +225,7 @@ class PackageURL {
       const nameIndex = remaining.length - 1;
       const namespaceComponents = remaining.slice(0, nameIndex);
       name = decodeURIComponent(remaining[nameIndex]);
-      namespace = decodeURIComponent(namespaceComponents.join('/'));
+      namespace = decodeURIComponent(namespaceComponents.filter(item => item.trim()).join('/'));
     } else if (remaining.length === 1) {
       name = decodeURIComponent(remaining[0]);
     }
