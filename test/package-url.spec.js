@@ -63,6 +63,115 @@ describe('PackageURL', function () {
         })
     })
 
+    describe('constructor', function () {
+        const paramMap = {
+            type: 0,
+            namespace: 1,
+            name: 2,
+            version: 3,
+            qualifiers: 4,
+            subpath: 5
+        }
+
+        const createArgs = (paramName, value) => {
+            const args = [
+                'type',
+                'namespace',
+                'name',
+                'version',
+                undefined,
+                'subpath'
+            ]
+            args[paramMap[paramName]] = value
+            return args
+        }
+
+        it('should validate required params', function () {
+            const testValid = (paramName) => {
+                const paramIndex = paramMap[paramName]
+                const args = createArgs(paramName, paramName)
+                const message = JSON.stringify(args[paramIndex])
+                try {
+                    new PackageURL(...args)
+                    assert.ok(true, message)
+                } catch {
+                    assert.ok(false, message)
+                }
+            }
+
+            const testInvalid = (paramName) => {
+                const paramIndex = paramMap[paramName]
+                ;[
+                    createArgs(paramName, 0),
+                    createArgs(paramName, false),
+                    createArgs(paramName, 1),
+                    createArgs(paramName, true),
+                    createArgs(paramName, {}),
+                    createArgs(paramName, null),
+                    createArgs(paramName, undefined),
+                    createArgs(paramName, '')
+                ].forEach((args) => {
+                    const message = JSON.stringify(args[paramIndex])
+                    try {
+                        new PackageURL(...args)
+                        assert.ok(false, message)
+                    } catch {
+                        assert.ok(true, message)
+                    }
+                })
+            }
+
+            ;['type', 'name'].forEach((paramName) => {
+                testValid(paramName)
+                testInvalid(paramName)
+            })
+        })
+
+        it('should validate string params', function () {
+            const testValid = (paramName) => {
+                const paramIndex = paramMap[paramName]
+                ;[
+                    createArgs(paramName, paramName),
+                    createArgs(paramName, null),
+                    createArgs(paramName, undefined),
+                    createArgs(paramName, '')
+                ].forEach((args) => {
+                    const message = JSON.stringify(args[paramIndex])
+                    try {
+                        new PackageURL(...args)
+                        assert.ok(true, message)
+                    } catch {
+                        assert.ok(false, message)
+                    }
+                })
+            }
+
+            const testInvalid = (paramName) => {
+                const paramIndex = paramMap[paramName]
+                ;[
+                    createArgs(paramName, 0),
+                    createArgs(paramName, false),
+                    createArgs(paramName, 1),
+                    createArgs(paramName, true),
+                    createArgs(paramName, {})
+                ].forEach((args) => {
+                    const message = JSON.stringify(args[paramIndex])
+                    try {
+                        new PackageURL(...args)
+                        assert.ok(false, message)
+                    } catch {
+                        assert.ok(true, message)
+                    }
+                })
+            }
+
+            ;['namespace', 'version', 'subpath'].forEach((paramName) => {
+                testValid(paramName)
+                testInvalid(paramName)
+            })
+        })
+    })
+
     describe('toString()', function () {
         it('type is validated', function () {
             ;['ty#pe', 'ty@pe', 'ty/pe', '1type'].forEach((type) => {

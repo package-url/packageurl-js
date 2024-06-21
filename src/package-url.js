@@ -397,16 +397,10 @@ function validateQualifierKey(key) {
 }
 
 function validateStrings(name, value) {
-    if (
-        value === null ||
-        value === undefined ||
-        (typeof value === 'string' && value.length !== 0)
-    ) {
+    if (value === null || value === undefined || typeof value === 'string') {
         return
     }
-    throw new Error(
-        `Invalid purl: "'${name}" argument must be a non-empty string.`
-    )
+    throw new Error(`Invalid purl: "'${name}" argument must be a string.`)
 }
 
 function validateType(type) {
