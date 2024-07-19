@@ -242,9 +242,9 @@ function normalizeNamespace(rawNamespace) {
 function normalizePath(pathname, callback) {
     let collapsed = ''
     let start = 0
-    // Leading and trailing slashes '/' are not significant and should be
+    // Leading and trailing slashes, i.e. '/', are not significant and should be
     // stripped in the canonical form.
-    while (pathname.charCodeAt(start) === 47) {
+    while (pathname.charCodeAt(start) === 47 /*'/'*/) {
         start += 1
     }
     let nextIndex = pathname.indexOf('/', start)
@@ -252,7 +252,7 @@ function normalizePath(pathname, callback) {
         return pathname.slice(start)
     }
     // Discard any empty string segments by collapsing repeated segment
-    // separator slashes '/'.
+    // separator slashes, i.e. '/'.
     while (nextIndex !== -1) {
         const segment = pathname.slice(start, nextIndex)
         if (callback === undefined || callback(segment)) {
@@ -328,7 +328,7 @@ function subpathFilter(segment) {
     //   - must not be any of '.' or '..'
     //   - must not be empty
     const { length } = segment
-    if (length === 1 && segment.charCodeAt(0) === 46) return false
+    if (length === 1 && segment.charCodeAt(0) === 46 /*'.'*/) return false
     if (
         length === 2 &&
         segment.charCodeAt(0) === 46 &&
@@ -340,7 +340,7 @@ function subpathFilter(segment) {
 
 function trimLeadingSlashes(str) {
     let start = 0
-    while (str.charCodeAt(start) === 47) {
+    while (str.charCodeAt(start) === 47 /*'/'*/) {
         start += 1
     }
     return start === 0 ? str : str.slice(start)
@@ -361,7 +361,7 @@ function validateRequiredByType(type, name, value) {
 function validateStartsWithoutNumber(name, value) {
     if (value.length !== 0) {
         const code = value.charCodeAt(0)
-        if (code >= 48 /*0*/ && code <= 57 /*9*/) {
+        if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
             throw new Error(
                 `Invalid purl: ${name} "${value}" cannot start with a number.`
             )
