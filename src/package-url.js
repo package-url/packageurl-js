@@ -447,8 +447,8 @@ class PackageURL {
         validateRequired('name', rawName)
 
         validateStrings('type', rawType)
-        validateStrings('namespace', rawNamespace)
         validateStrings('name', rawName)
+        validateStrings('namespace', rawNamespace)
         validateStrings('version', rawVersion)
         validateStrings('subpath', rawSubpath)
 

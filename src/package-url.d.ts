@@ -74,12 +74,14 @@ declare module "packageurl-js" {
      */
     subpath: string | undefined;
 
-    constructor(type: string,
+    constructor(
+      type: string,
       namespace: string | undefined | null,
       name: string,
-      version: string | undefined | null,
-      qualifiers: { [key: string]: string; } | undefined | null,
-      subpath: string | undefined | null);
+      version?: string | undefined | null,
+      qualifiers?: { [key: string]: string; } | undefined | null,
+      subpath?: string | undefined | null
+    );
 
     /**
      * Converts the PackageURL to a string
