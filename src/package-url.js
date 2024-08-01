@@ -36,6 +36,7 @@ const KnownQualifierNames = Object.freeze({
 const regexSemverNumberedGroups =
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
 
+// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
 const normalize = {
     alpm(purl) {
         lowerNamespace(purl)
@@ -56,7 +57,7 @@ const normalize = {
         lowerNamespace(purl)
         lowerName(purl)
     },
-    debian(purl) {
+    deb(purl) {
         lowerNamespace(purl)
         lowerName(purl)
     },
@@ -70,9 +71,13 @@ const normalize = {
     },
     golang(_purl) {
         // Ignore case-insensitive rule because go.mod are case-sensitive.
-        // https://github.com/package-url/purl-spec/pull/196
+        // Pending spec change: https://github.com/package-url/purl-spec/pull/196
         // lowerNamespace(purl)
         // lowerName(purl)
+    },
+    hex(purl) {
+        lowerNamespace(purl)
+        lowerName(purl)
     },
     huggingface(purl) {
         lowerVersion(purl)
@@ -81,21 +86,20 @@ const normalize = {
         lowerNamespace(purl)
         lowerName(purl)
     },
+    luarocks(purl) {
+        lowerVersion(purl)
+    },
+    oci(purl) {
+        lowerName(purl)
+    },
+    pub(purl) {
+        lowerName(purl)
+        purl.name = replaceDashesWithUnderscores(purl.name)
+    },
     pypi(purl) {
         lowerNamespace(purl)
         lowerName(purl)
-        // Replace all "_" with "-"
-        let name = ''
-        let fromIndex = 0
-        let index = 0
-        const { name: oldName } = purl
-        while ((index = oldName.indexOf('_', fromIndex)) !== -1) {
-            name = name + oldName.slice(fromIndex, index) + '-'
-            fromIndex = index + 1
-        }
-        if (fromIndex) {
-            purl.name = name + oldName.slice(fromIndex)
-        }
+        purl.name = replaceUnderscoresWithDashes(purl.name)
     },
     qpkg(purl) {
         lowerNamespace(purl)
@@ -106,6 +110,9 @@ const normalize = {
 }
 
 const validate = {
+    // TODO: cocoapods name validation
+    // TODO: cpan namespace validation
+    // TODO: swid qualifier validation
     conan(purl) {
         if (isNullishOrEmptyString(purl.namespace)) {
             if (purl.qualifiers?.channel) {
@@ -154,6 +161,12 @@ const validate = {
     },
     maven(purl) {
         validateRequiredByType('maven', 'namespace', purl.namespace)
+    },
+    mflow(purl) {
+        validateEmptyByType('mflow', 'namespace', purl.namespace)
+    },
+    oci(purl) {
+        validateEmptyByType('oci', 'namespace', purl.namespace)
     },
     pub(purl) {
         const { name } = purl
@@ -360,6 +373,30 @@ function normalizeVersion(rawVersion) {
         : undefined
 }
 
+function replaceDashesWithUnderscores(str) {
+    // Replace all "-" with "_"
+    let result = ''
+    let fromIndex = 0
+    let index = 0
+    while ((index = str.indexOf('-', fromIndex)) !== -1) {
+        result = result + str.slice(fromIndex, index) + '_'
+        fromIndex = index + 1
+    }
+    return fromIndex ? result + str.slice(fromIndex) : str
+}
+
+function replaceUnderscoresWithDashes(str) {
+    // Replace all "_" with "-"
+    let result = ''
+    let fromIndex = 0
+    let index = 0
+    while ((index = str.indexOf('_', fromIndex)) !== -1) {
+        result = result + str.slice(fromIndex, index) + '-'
+        fromIndex = index + 1
+    }
+    return fromIndex ? result + str.slice(fromIndex) : str
+}
+
 function subpathFilter(segment) {
     // When percent-decoded, a segment
     //   - must not be any of '.' or '..'
@@ -382,6 +419,12 @@ function trimLeadingSlashes(str) {
         start += 1
     }
     return start === 0 ? str : str.slice(start)
+}
+
+function validateEmptyByType(type, name, value) {
+    if (!isNullishOrEmptyString(value)) {
+        throw new Error(`Invalid purl: ${type} "${name}" field must be empty.`)
+    }
 }
 
 function validateRequired(name, value) {

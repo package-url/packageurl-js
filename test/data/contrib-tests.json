@@ -60,18 +60,6 @@
     "is_invalid": false
   },
   {
-    "description": "validates pub name (invalid)",
-    "purl": "pkg:pub/flutter-downloader@1.0.0",
-    "canonical_purl": "pkg:pub/flutter-downloader@1.0.0",
-    "type": "pub",
-    "namespace": null,
-    "name": "flutter-downloader",
-    "version": "1.0.0",
-    "qualifiers": null,
-    "subpath": null,
-    "is_invalid": true
-  },
-  {
     "description": "namespace can contain special characters",
     "purl": "pkg:npm/%40foo%40%3F%23/bar@1.0.0",
     "canonical_purl": "pkg:npm/%40foo%40%3F%23/bar@1.0.0",

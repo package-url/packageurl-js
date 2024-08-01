@@ -419,6 +419,21 @@ describe('PackageURL', function () {
         })
     })
 
+    describe('pub', function () {
+        it('should normalize dashes to underscores', function () {
+            const purlWithDashes = new PackageURL(
+                'pub',
+                '',
+                'flutter-downloader',
+                '1.0.0'
+            )
+            assert.strictEqual(
+                purlWithDashes.toString(),
+                'pkg:pub/flutter_downloader@1.0.0'
+            )
+        })
+    })
+
     describe('pypi', function () {
         it('should handle pypi package-urls per the purl-spec', function () {
             const purlMixedCasing = PackageURL.fromString(
