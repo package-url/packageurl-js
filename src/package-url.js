@@ -106,13 +106,13 @@ const normalize = {
 
 const validate = {
     conan(purl) {
-        if (isEmpty(purl.namespace)) {
+        if (isNullishOrEmptyString(purl.namespace)) {
             if (purl.qualifiers?.channel) {
                 throw new Error(
                     'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
                 )
             }
-        } else if (isEmpty(purl.qualifiers)) {
+        } else if (isNullishOrEmptyString(purl.qualifiers)) {
             throw new Error(
                 'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
             )
@@ -235,7 +235,7 @@ function isBlank(str) {
     return true
 }
 
-function isEmpty(value) {
+function isNullishOrEmptyString(value) {
     return (
         value === null ||
         value === undefined ||
@@ -369,8 +369,9 @@ function subpathFilter(segment) {
         length === 2 &&
         segment.charCodeAt(0) === 46 &&
         segment.charCodeAt(1) === 46
-    )
+    ) {
         return false
+    }
     return !isBlank(segment)
 }
 
@@ -383,13 +384,13 @@ function trimLeadingSlashes(str) {
 }
 
 function validateRequired(name, value) {
-    if (isEmpty(value)) {
+    if (isNullishOrEmptyString(value)) {
         throw new Error(`Invalid purl: "${name}" is a required field.`)
     }
 }
 
 function validateRequiredByType(type, name, value) {
-    if (isEmpty(value)) {
+    if (isNullishOrEmptyString(value)) {
         throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
     }
 }
