@@ -31,6 +31,10 @@ const KnownQualifierNames = Object.freeze({
     Checksum: 'checksum'
 })
 
+// This regexp is valid as of 2024-08-01.
+// https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+const regexSemverNumberedGroups = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+
 const normalize = {
     alpm(purl) {
         lowerNamespace(purl)
@@ -63,9 +67,11 @@ const normalize = {
         lowerNamespace(purl)
         lowerName(purl)
     },
-    golang(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
+    golang(_purl) {
+        // Ignore case-insensitive rule because go.mod are case-sensitive.
+        // https://github.com/package-url/purl-spec/pull/196
+        // lowerNamespace(purl)
+        // lowerName(purl)
     },
     huggingface(purl) {
         lowerVersion(purl)
@@ -114,6 +120,36 @@ const validate = {
     },
     cran(purl) {
         validateRequiredByType('cran', 'version', purl.version)
+    },
+    golang(purl) {
+        const { version } = purl
+        const length = typeof version === 'string' ? version.length : 0
+        if (!length) return
+        if (version.charCodeAt(0) === 118 /*'v'*/) {
+            if (!regexSemverNumberedGroups.test(version.slice(1))) {
+                throw new Error(
+                    'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
+                )
+            }
+            return
+        }
+        for (let i = 0; i < length; i += 1) {
+            const code = version.charCodeAt(i)
+            // prettier-ignore
+            if (
+                !(
+                    (
+                        (code >= 48 && code <= 57)  || // 0-9
+                        (code >= 65 && code <= 70) || // A-F
+                        (code >= 97 && code <= 102) // a-f
+                    )
+                )
+            ) {
+                throw new Error(
+                    'Invalid purl: golang "version" field is not a valid SHA-1 GIT commit hash'
+                )
+            }
+        }
     },
     maven(purl) {
         validateRequiredByType('maven', 'namespace', purl.namespace)
