@@ -130,33 +130,21 @@ const validate = {
         validateRequiredByType('cran', 'version', purl.version)
     },
     golang(purl) {
+        // Still being lenient here since the standard changes aren't official.
+        // Pending spec change: https://github.com/package-url/purl-spec/pull/196
         const { version } = purl
         const length = typeof version === 'string' ? version.length : 0
-        if (!length) return
-        if (version.charCodeAt(0) === 118 /*'v'*/) {
-            if (!regexSemverNumberedGroups.test(version.slice(1))) {
-                throw new Error(
-                    'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
-                )
-            }
-            return
-        }
-        for (let i = 0; i < length; i += 1) {
-            const code = version.charCodeAt(i)
-            // prettier-ignore
-            if (
-                !(
-                    (
-                        (code >= 48 && code <= 57)  || // 0-9
-                        (code >= 65 && code <= 70) || // A-F
-                        (code >= 97 && code <= 102) // a-f
-                    )
-                )
-            ) {
-                throw new Error(
-                    'Invalid purl: golang "version" field is not a valid SHA-1 GIT commit hash'
-                )
-            }
+        // If the version starts with a "v" then ensure its a valid semver version.
+        // This, by semver semantics, also supports pseudo-version number.
+        // https://go.dev/doc/modules/version-numbers#pseudo-version-number
+        if (
+            length &&
+            version.charCodeAt(0) === 118 /*'v'*/ &&
+            !regexSemverNumberedGroups.test(version.slice(1))
+        ) {
+            throw new Error(
+                'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
+            )
         }
     },
     maven(purl) {
