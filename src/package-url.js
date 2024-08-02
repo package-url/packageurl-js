@@ -21,164 +21,200 @@ SOFTWARE.
 */
 'use strict'
 
-const KnownQualifierNames = Object.freeze({
-    // known qualifiers as defined here:
-    // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
-    RepositoryUrl: 'repository_url',
-    DownloadUrl: 'download_url',
-    VcsUrl: 'vcs_url',
-    FileName: 'file_name',
-    Checksum: 'checksum'
-})
+const LOOP_SENTINEL = 1_000_000
 
 // This regexp is valid as of 2024-08-01.
 // https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 const regexSemverNumberedGroups =
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
 
-// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
-const normalize = {
-    alpm(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
+// Rules for each purl component:
+// https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
+const Component = {
+    __proto__: null,
+    encode: {
+        __proto__: null,
+        type: encodeType,
+        namespace: encodeNamespace,
+        name: encodeName,
+        version: encodeVersion,
+        qualifiers: encodeQualifiers,
+        subpath: encodeSubpath
     },
-    apk(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
+    normalize: {
+        __proto__: null,
+        type: normalizeType,
+        namespace: normalizeNamespace,
+        name: normalizeName,
+        version: normalizeVersion,
+        qualifiers: normalizeQualifiers,
+        subpath: normalizeSubpath
     },
-    bitbucket(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    bitnami(purl) {
-        lowerName(purl)
-    },
-    composer(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    deb(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    gitlab(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    github(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    golang(_purl) {
-        // Ignore case-insensitive rule because go.mod are case-sensitive.
-        // Pending spec change: https://github.com/package-url/purl-spec/pull/196
-        // lowerNamespace(purl)
-        // lowerName(purl)
-    },
-    hex(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    huggingface(purl) {
-        lowerVersion(purl)
-    },
-    npm(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-    },
-    luarocks(purl) {
-        lowerVersion(purl)
-    },
-    oci(purl) {
-        lowerName(purl)
-    },
-    pub(purl) {
-        lowerName(purl)
-        purl.name = replaceDashesWithUnderscores(purl.name)
-    },
-    pypi(purl) {
-        lowerNamespace(purl)
-        lowerName(purl)
-        purl.name = replaceUnderscoresWithDashes(purl.name)
-    },
-    qpkg(purl) {
-        lowerNamespace(purl)
-    },
-    rpm(purl) {
-        lowerNamespace(purl)
+    validate: {
+        __proto__: null,
+        type: validateType
     }
 }
 
-const validate = {
-    // TODO: cocoapods name validation
-    // TODO: cpan namespace validation
-    // TODO: swid qualifier validation
-    conan(purl) {
-        if (isNullishOrEmptyString(purl.namespace)) {
-            if (purl.qualifiers?.channel) {
+// Known qualifiers:
+// https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
+const KnownQualifierNames = {
+    __proto__: null,
+    RepositoryUrl: 'repository_url',
+    DownloadUrl: 'download_url',
+    VcsUrl: 'vcs_url',
+    FileName: 'file_name',
+    Checksum: 'checksum'
+}
+
+// PURL types:
+// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
+const Type = {
+    __proto__: null,
+    normalize: {
+        __proto__: null,
+        alpm(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        apk(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        bitbucket(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        bitnami(purl) {
+            lowerName(purl)
+        },
+        composer(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        deb(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        gitlab(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        github(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        golang(_purl) {
+            // Ignore case-insensitive rule because go.mod are case-sensitive.
+            // Pending spec change: https://github.com/package-url/purl-spec/pull/196
+            // lowerNamespace(purl)
+            // lowerName(purl)
+        },
+        hex(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        huggingface(purl) {
+            lowerVersion(purl)
+        },
+        npm(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+        },
+        luarocks(purl) {
+            lowerVersion(purl)
+        },
+        oci(purl) {
+            lowerName(purl)
+        },
+        pub(purl) {
+            lowerName(purl)
+            purl.name = replaceDashesWithUnderscores(purl.name)
+        },
+        pypi(purl) {
+            lowerNamespace(purl)
+            lowerName(purl)
+            purl.name = replaceUnderscoresWithDashes(purl.name)
+        },
+        qpkg(purl) {
+            lowerNamespace(purl)
+        },
+        rpm(purl) {
+            lowerNamespace(purl)
+        }
+    },
+    validate: {
+        // TODO: cocoapods name validation
+        // TODO: cpan namespace validation
+        // TODO: swid qualifier validation
+        __proto__: null,
+        conan(purl) {
+            if (isNullishOrEmptyString(purl.namespace)) {
+                if (purl.qualifiers?.channel) {
+                    throw new Error(
+                        'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                    )
+                }
+            } else if (isNullishOrEmptyString(purl.qualifiers)) {
                 throw new Error(
-                    'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                    'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
                 )
             }
-        } else if (isNullishOrEmptyString(purl.qualifiers)) {
-            throw new Error(
-                'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
-            )
-        }
-    },
-    cran(purl) {
-        validateRequiredByType('cran', 'version', purl.version)
-    },
-    golang(purl) {
-        // Still being lenient here since the standard changes aren't official.
-        // Pending spec change: https://github.com/package-url/purl-spec/pull/196
-        const { version } = purl
-        const length = typeof version === 'string' ? version.length : 0
-        // If the version starts with a "v" then ensure its a valid semver version.
-        // This, by semver semantics, also supports pseudo-version number.
-        // https://go.dev/doc/modules/version-numbers#pseudo-version-number
-        if (
-            length &&
-            version.charCodeAt(0) === 118 /*'v'*/ &&
-            !regexSemverNumberedGroups.test(version.slice(1))
-        ) {
-            throw new Error(
-                'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
-            )
-        }
-    },
-    maven(purl) {
-        validateRequiredByType('maven', 'namespace', purl.namespace)
-    },
-    mflow(purl) {
-        validateEmptyByType('mflow', 'namespace', purl.namespace)
-    },
-    oci(purl) {
-        validateEmptyByType('oci', 'namespace', purl.namespace)
-    },
-    pub(purl) {
-        const { name } = purl
-        for (let i = 0, { length } = name; i < length; i += 1) {
-            const code = name.charCodeAt(i)
-            // prettier-ignore
+        },
+        cran(purl) {
+            validateRequiredByType('cran', 'version', purl.version)
+        },
+        golang(purl) {
+            // Still being lenient here since the standard changes aren't official.
+            // Pending spec change: https://github.com/package-url/purl-spec/pull/196
+            const { version } = purl
+            const length = typeof version === 'string' ? version.length : 0
+            // If the version starts with a "v" then ensure its a valid semver version.
+            // This, by semver semantics, also supports pseudo-version number.
+            // https://go.dev/doc/modules/version-numbers#pseudo-version-number
             if (
-                !(
-                    (
-                        (code >= 48 && code <= 57)  || // 0-9
-                        (code >= 97 && code <= 122) || // a-z
-                        code === 95 // _
-                    )
-                )
+                length &&
+                version.charCodeAt(0) === 118 /*'v'*/ &&
+                !regexSemverNumberedGroups.test(version.slice(1))
             ) {
                 throw new Error(
-                    'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
+                    'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
                 )
             }
+        },
+        maven(purl) {
+            validateRequiredByType('maven', 'namespace', purl.namespace)
+        },
+        mflow(purl) {
+            validateEmptyByType('mflow', 'namespace', purl.namespace)
+        },
+        oci(purl) {
+            validateEmptyByType('oci', 'namespace', purl.namespace)
+        },
+        pub(purl) {
+            const { name } = purl
+            for (let i = 0, { length } = name; i < length; i += 1) {
+                const code = name.charCodeAt(i)
+                // prettier-ignore
+                if (
+                    !(
+                        (
+                            (code >= 48 && code <= 57)  || // 0-9
+                            (code >= 97 && code <= 122) || // a-z
+                            code === 95 // _
+                        )
+                    )
+                ) {
+                    throw new Error(
+                        'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
+                    )
+                }
+            }
+        },
+        swift(purl) {
+            validateRequiredByType('swift', 'namespace', purl.namespace)
+            validateRequiredByType('swift', 'version', purl.version)
         }
-    },
-    swift(purl) {
-        validateRequiredByType('swift', 'namespace', purl.namespace)
-        validateRequiredByType('swift', 'version', purl.version)
     }
 }
 
@@ -192,6 +228,38 @@ function encodeWithColonAndPlusSign(str) {
 
 function encodeWithForwardSlash(str) {
     return encodeURIComponent(str).replace(/%2F/g, '/')
+}
+
+function encodeType(type) {
+    return type ? encodeURIComponent(type) : ''
+}
+
+function encodeNamespace(namespace) {
+    return namespace ? encodeWithColonAndForwardSlash(namespace) : ''
+}
+
+function encodeName(name) {
+    return name ? encodeURIComponent(name) : ''
+}
+function encodeVersion(version) {
+    return version ? encodeWithColonAndPlusSign(version) : version
+}
+
+function encodeQualifiers(qualifiers) {
+    let query = ''
+    if (qualifiers) {
+        // Sort this list of qualifier strings lexicographically.
+        const qualifiersKeys = Object.keys(qualifiers).sort()
+        for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
+            const key = qualifiersKeys[i]
+            query = `${query}${i === 0 ? '' : '&'}${key}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
+        }
+    }
+    return query
+}
+
+function encodeSubpath(subpath) {
+    return subpath ? encodeWithForwardSlash(subpath) : ''
 }
 
 function isBlank(str) {
@@ -361,6 +429,54 @@ function normalizeVersion(rawVersion) {
         : undefined
 }
 
+function recursiveFreeze(value_) {
+    if (
+        value_ === null ||
+        !(typeof value_ === 'object' || typeof value_ === 'function') ||
+        Object.isFrozen(value_)
+    ) {
+        return value_
+    }
+    const queue = [value_]
+    let { length: queueLength } = queue
+    let pos = 0
+    while (pos < queueLength) {
+        if (pos === LOOP_SENTINEL) {
+            throw new Error(
+                'Detected infinite loop in object crawl of recursiveFreeze'
+            )
+        }
+        const obj = queue[pos++]
+        Object.freeze(obj)
+        if (Array.isArray(obj)) {
+            for (let i = 0, { length } = obj; i < length; i += 1) {
+                const item = obj[i]
+                if (
+                    item !== null &&
+                    (typeof item === 'object' || typeof item === 'function') &&
+                    !Object.isFrozen(item)
+                ) {
+                    queue[queueLength++] = item
+                }
+            }
+        } else {
+            const keys = Reflect.ownKeys(obj)
+            for (let i = 0, { length } = keys; i < length; i += 1) {
+                const propValue = obj[keys[i]]
+                if (
+                    propValue !== null &&
+                    (typeof propValue === 'object' ||
+                        typeof propValue === 'function') &&
+                    !Object.isFrozen(propValue)
+                ) {
+                    queue[queueLength++] = propValue
+                }
+            }
+        }
+    }
+    return value_
+}
+
 function replaceDashesWithUnderscores(str) {
     // Replace all "-" with "_"
     let result = ''
@@ -500,9 +616,9 @@ function validateType(type) {
 }
 
 class PackageURL {
-    static get KnownQualifierNames() {
-        return KnownQualifierNames
-    }
+    static Component = recursiveFreeze(Component)
+    static KnownQualifierNames = recursiveFreeze(KnownQualifierNames)
+    static Type = recursiveFreeze(Type)
 
     constructor(
         rawType,
@@ -531,13 +647,13 @@ class PackageURL {
         this.qualifiers = qualifiers
         this.subpath = normalizeSubpath(rawSubpath)
 
-        const normalizer = normalize[type]
+        const normalizer = Type.normalize[type]
         // Apply type-specific normalization to the name if needed.
         // Apply type-specific normalization to each namespace segment if needed.
         if (typeof normalizer === 'function') {
             normalizer(this)
         }
-        const validator = validate[type]
+        const validator = Type.validate[type]
         if (typeof validator === 'function') {
             validator(this)
         }
@@ -545,41 +661,38 @@ class PackageURL {
 
     toString() {
         const { namespace, name, version, qualifiers, subpath, type } = this
-        let purl = `pkg:${encodeURIComponent(type)}/`
+        let purlStr = `pkg:${encodeType(type)}/`
         if (namespace) {
-            purl = `${purl}${encodeWithColonAndForwardSlash(namespace)}/`
+            purlStr = `${purlStr}${encodeNamespace(namespace)}/`
         }
-        purl = `${purl}${encodeURIComponent(name)}`
+        purlStr = `${purlStr}${encodeName(name)}`
         if (version) {
-            purl = `${purl}@${encodeWithColonAndPlusSign(version)}`
+            purlStr = `${purlStr}@${encodeVersion(version)}`
         }
         if (qualifiers) {
-            let query = ''
-            // Sort this list of qualifier strings lexicographically.
-            const qualifiersKeys = Object.keys(qualifiers).sort()
-            for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
-                const key = qualifiersKeys[i]
-                query = `${query}${i === 0 ? '' : '&'}${key}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
-            }
-            purl = `${purl}?${query}`
+            purlStr = `${purlStr}?${encodeQualifiers(qualifiers)}`
         }
         if (subpath) {
-            purl = `${purl}#${encodeWithForwardSlash(subpath)}`
+            purlStr = `${purlStr}#${encodeSubpath(subpath)}`
         }
-        return purl
+        return purlStr
     }
 
-    static fromString(purl) {
+    static fromString(purlStr) {
+        return new PackageURL(...PackageURL.parseString(purlStr))
+    }
+
+    static parseString(purlStr) {
         // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#how-to-parse-a-purl-string-in-its-components
-        if (typeof purl !== 'string' || isBlank(purl)) {
+        if (typeof purlStr !== 'string' || isBlank(purlStr)) {
             throw new Error('A purl non-empty string argument is required.')
         }
 
         // Split the remainder once from left on ':'.
-        const colonIndex = purl.indexOf(':')
+        const colonIndex = purlStr.indexOf(':')
         // The left side lowercased is the scheme.
         const scheme =
-            colonIndex === -1 ? '' : purl.slice(0, colonIndex).toLowerCase()
+            colonIndex === -1 ? '' : purlStr.slice(0, colonIndex).toLowerCase()
         // The scheme is a constant with the value "pkg"
         if (scheme !== 'pkg') {
             throw new Error(
@@ -591,7 +704,7 @@ class PackageURL {
         // suffixed with double slash as in 'pkg://' and should use instead 'pkg:'.
         //   - purl parsers must accept URLs such as 'pkg://' and must ignore the '//'.
         //   - The scheme is followed by a ':' separator.
-        const afterProtocol = trimLeadingSlashes(purl.slice(colonIndex + 1))
+        const afterProtocol = trimLeadingSlashes(purlStr.slice(colonIndex + 1))
         const firstSlashIndex = afterProtocol.indexOf('/')
         if (firstSlashIndex < 1) {
             throw new Error('purl is missing the required "type" component.')
@@ -651,15 +764,15 @@ class PackageURL {
             subpath = hash.slice(1)
         }
 
-        return new PackageURL(
-            type,
-            namespace,
-            name,
-            version,
-            qualifiers,
-            subpath
-        )
+        return [type, namespace, name, version, qualifiers, subpath]
     }
+}
+
+for (const staticProp of ['Component', 'KnownQualifierNames', 'Type']) {
+    Reflect.defineProperty(PackageURL, staticProp, {
+        ...Reflect.getOwnPropertyDescriptor(PackageURL, staticProp),
+        writable: false
+    })
 }
 
 Reflect.setPrototypeOf(PackageURL.prototype, null)
