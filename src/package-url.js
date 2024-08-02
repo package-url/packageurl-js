@@ -52,7 +52,9 @@ const Component = {
     },
     validate: {
         __proto__: null,
-        type: validateType
+        type: validateType,
+        qualifierKey: validateQualifierKey,
+        qualifiers: validateQualifiers
     }
 }
 
@@ -73,74 +75,117 @@ const Type = {
     __proto__: null,
     normalize: {
         __proto__: null,
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#alpm
         alpm(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#apk
         apk(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitbucket
         bitbucket(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitnami
         bitnami(purl) {
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#composer
         composer(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#deb
         deb(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#other-candidate-types-to-define
         gitlab(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#github
         github(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
-        golang(_purl) {
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
+        golang(purl) {
             // Ignore case-insensitive rule because go.mod are case-sensitive.
             // Pending spec change: https://github.com/package-url/purl-spec/pull/196
             // lowerNamespace(purl)
             // lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#hex
         hex(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#huggingface
         huggingface(purl) {
             lowerVersion(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
+        mlflow(purl) {
+            if (purl.qualifiers?.repository_url?.includes('databricks')) {
+                lowerName(purl)
+            }
+            return purl
+        },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#npm
         npm(purl) {
             lowerNamespace(purl)
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#luarocks
         luarocks(purl) {
             lowerVersion(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
         oci(purl) {
             lowerName(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
         pub(purl) {
             lowerName(purl)
             purl.name = replaceDashesWithUnderscores(purl.name)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pypi
         pypi(purl) {
             lowerNamespace(purl)
             lowerName(purl)
             purl.name = replaceUnderscoresWithDashes(purl.name)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#qpkg
         qpkg(purl) {
             lowerNamespace(purl)
+            return purl
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#rpm
         rpm(purl) {
             lowerNamespace(purl)
+            return purl
         }
     },
     validate: {
@@ -148,22 +193,37 @@ const Type = {
         // TODO: cpan namespace validation
         // TODO: swid qualifier validation
         __proto__: null,
-        conan(purl) {
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#conan
+        conan(purl, throws) {
             if (isNullishOrEmptyString(purl.namespace)) {
                 if (purl.qualifiers?.channel) {
-                    throw new Error(
-                        'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
-                    )
+                    if (throws) {
+                        throw new Error(
+                            'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                        )
+                    }
+                    return false
                 }
             } else if (isNullishOrEmptyString(purl.qualifiers)) {
-                throw new Error(
-                    'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
-                )
+                if (throws) {
+                    throw new Error(
+                        'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
+                    )
+                }
+                return false
             }
+            return true
         },
-        cran(purl) {
-            validateRequiredByType('cran', 'version', purl.version)
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cran
+        cran(purl, throws) {
+            return validateRequiredByType(
+                'cran',
+                'version',
+                purl.version,
+                throws
+            )
         },
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
         golang(purl) {
             // Still being lenient here since the standard changes aren't official.
             // Pending spec change: https://github.com/package-url/purl-spec/pull/196
@@ -177,21 +237,44 @@ const Type = {
                 version.charCodeAt(0) === 118 /*'v'*/ &&
                 !regexSemverNumberedGroups.test(version.slice(1))
             ) {
-                throw new Error(
-                    'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
-                )
+                if (throws) {
+                    throw new Error(
+                        'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
+                    )
+                }
+                return false
             }
+            return true
         },
-        maven(purl) {
-            validateRequiredByType('maven', 'namespace', purl.namespace)
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#maven
+        maven(purl, throws) {
+            return validateRequiredByType(
+                'maven',
+                'namespace',
+                purl.namespace,
+                throws
+            )
         },
-        mflow(purl) {
-            validateEmptyByType('mflow', 'namespace', purl.namespace)
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
+        mlflow(purl, throws) {
+            return validateEmptyByType(
+                'mflow',
+                'namespace',
+                purl.namespace,
+                throws
+            )
         },
-        oci(purl) {
-            validateEmptyByType('oci', 'namespace', purl.namespace)
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
+        oci(purl, throws) {
+            return validateEmptyByType(
+                'oci',
+                'namespace',
+                purl.namespace,
+                throws
+            )
         },
-        pub(purl) {
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
+        pub(purl, throws) {
             const { name } = purl
             for (let i = 0, { length } = name; i < length; i += 1) {
                 const code = name.charCodeAt(i)
@@ -205,15 +288,27 @@ const Type = {
                         )
                     )
                 ) {
-                    throw new Error(
-                        'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
-                    )
+                    if (throws) {
+                        throw new Error(
+                            'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
+                        )
+                    }
+                    return false
                 }
             }
+            return true
         },
-        swift(purl) {
-            validateRequiredByType('swift', 'namespace', purl.namespace)
-            validateRequiredByType('swift', 'version', purl.version)
+        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#swift
+        swift(purl, throws) {
+            return (
+                validateRequiredByType(
+                    'swift',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                ) &&
+                validateRequiredByType('swift', 'version', purl.version, throws)
+            )
         }
     }
 }
@@ -231,23 +326,31 @@ function encodeWithForwardSlash(str) {
 }
 
 function encodeType(type) {
-    return type ? encodeURIComponent(type) : ''
+    return typeof type === 'string' && type.length
+        ? encodeURIComponent(type)
+        : ''
 }
 
 function encodeNamespace(namespace) {
-    return namespace ? encodeWithColonAndForwardSlash(namespace) : ''
+    return typeof namespace === 'string' && namespace.length
+        ? encodeWithColonAndForwardSlash(namespace)
+        : ''
 }
 
 function encodeName(name) {
-    return name ? encodeURIComponent(name) : ''
+    return typeof name === 'string' && name.length
+        ? encodeURIComponent(name)
+        : ''
 }
 function encodeVersion(version) {
-    return version ? encodeWithColonAndPlusSign(version) : version
+    return typeof version === 'string' && version.length
+        ? encodeWithColonAndPlusSign(version)
+        : ''
 }
 
 function encodeQualifiers(qualifiers) {
     let query = ''
-    if (qualifiers) {
+    if (qualifiers !== null && typeof qualifiers === 'object') {
         // Sort this list of qualifier strings lexicographically.
         const qualifiersKeys = Object.keys(qualifiers).sort()
         for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
@@ -259,7 +362,9 @@ function encodeQualifiers(qualifiers) {
 }
 
 function encodeSubpath(subpath) {
-    return subpath ? encodeWithForwardSlash(subpath) : ''
+    return typeof subpath === 'string' && subpath.length
+        ? encodeWithForwardSlash(subpath)
+        : ''
 }
 
 function isBlank(str) {
@@ -331,12 +436,8 @@ function lowerVersion(purl) {
     }
 }
 
-function normalizeName(rawName, qualifiers) {
-    return decodeURIComponent(
-        qualifiers?.repository_url?.includes('databricks')
-            ? rawName.toLowerCase()
-            : rawName
-    )
+function normalizeName(rawName) {
+    return decodeURIComponent(rawName)
 }
 
 function normalizeNamespace(rawNamespace) {
@@ -382,27 +483,25 @@ function normalizePath(pathname, callback) {
 }
 
 function normalizeQualifiers(rawQualifiers) {
-    if (rawQualifiers === null || rawQualifiers === undefined) {
+    if (
+        rawQualifiers === null ||
+        rawQualifiers === undefined ||
+        typeof rawQualifiers !== 'object'
+    ) {
         return undefined
     }
-    if (typeof rawQualifiers !== 'object') {
-        throw new Error(
-            'Invalid purl: "qualifiers" argument must be an object.'
-        )
-    }
+    const qualifiers = { __proto__: null }
     const entries =
         // URL searchParams have an "entries" method.
         typeof rawQualifiers.entries === 'function'
             ? rawQualifiers.entries()
             : Object.entries(rawQualifiers)
-    const qualifiers = { __proto__: null }
     for (const { 0: key, 1: value } of entries) {
         const strValue = typeof value === 'string' ? value : String(value)
         const trimmed = strValue.trim()
         // Value cannot be an empty string: a key=value pair with an empty value
         // is the same as no key/value at all for this key.
         if (trimmed.length === 0) continue
-        validateQualifierKey(key)
         // A key is case insensitive. The canonical form is lowercase.
         qualifiers[key.toLowerCase()] = trimmed
     }
@@ -418,9 +517,9 @@ function normalizeSubpath(rawSubpath) {
 function normalizeType(rawType) {
     // The type must NOT be percent-encoded.
     // The type is case insensitive. The canonical form is lowercase.
-    const type = decodeURIComponent(rawType).trim().toLowerCase()
-    validateType(type)
-    return type
+    return typeof rawType === 'string'
+        ? decodeURIComponent(rawType).trim().toLowerCase()
+        : undefined
 }
 
 function normalizeVersion(rawVersion) {
@@ -525,38 +624,83 @@ function trimLeadingSlashes(str) {
     return start === 0 ? str : str.slice(start)
 }
 
-function validateEmptyByType(type, name, value) {
+function validateEmptyByType(type, name, value, throws) {
     if (!isNullishOrEmptyString(value)) {
-        throw new Error(`Invalid purl: ${type} "${name}" field must be empty.`)
+        if (throws) {
+            throw new Error(
+                `Invalid purl: ${type} "${name}" field must be empty.`
+            )
+        }
+        return false
     }
+    return true
 }
 
-function validateRequired(name, value) {
+function validateRequired(name, value, throws) {
     if (isNullishOrEmptyString(value)) {
-        throw new Error(`Invalid purl: "${name}" is a required field.`)
+        if (throws) {
+            throw new Error(`Invalid purl: "${name}" is a required field.`)
+        }
+        return false
     }
+    return true
 }
 
-function validateRequiredByType(type, name, value) {
+function validateRequiredByType(type, name, value, throws) {
     if (isNullishOrEmptyString(value)) {
-        throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
+        if (throws) {
+            throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
+        }
+        return false
     }
+    return true
 }
 
-function validateStartsWithoutNumber(name, value) {
+function validateStartsWithoutNumber(name, value, throws) {
     if (value.length !== 0) {
         const code = value.charCodeAt(0)
         if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
-            throw new Error(
-                `Invalid purl: ${name} "${value}" cannot start with a number.`
-            )
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: ${name} "${value}" cannot start with a number.`
+                )
+            }
+            return false
         }
     }
+    return true
 }
 
-function validateQualifierKey(key) {
+function validateQualifiers(qualifiers, throws) {
+    if (qualifiers === null || qualifiers === undefined) {
+        return true
+    }
+    if (typeof qualifiers !== 'object') {
+        if (throws) {
+            throw new Error(
+                'Invalid purl: "qualifiers" argument must be an object.'
+            )
+        }
+        return false
+    }
+    const keys =
+        // URL searchParams have an "keys" method.
+        typeof qualifiers.keys === 'function'
+            ? qualifiers.keys()
+            : Object.keys(qualifiers)
+    for (let i = 0, { length } = keys; i < length; i += 1) {
+        if (!validateQualifierKey(keys[i], throws)) {
+            return false
+        }
+    }
+    return true
+}
+
+function validateQualifierKey(key, throws) {
     // A key cannot start with a number.
-    validateStartsWithoutNumber('qualifier', key)
+    if (!validateStartsWithoutNumber('qualifier', key, throws)) {
+        return false
+    }
     // The key must be composed only of ASCII letters and numbers,
     // '.', '-' and '_' (period, dash and underscore).
     for (let i = 0, { length } = key; i < length; i += 1) {
@@ -574,23 +718,32 @@ function validateQualifierKey(key) {
                 )
             )
         ) {
-            throw new Error(
-                `Invalid purl: qualifier "${key}" contains an illegal character.`
-            )
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: qualifier "${key}" contains an illegal character.`
+                )
+            }
+            return false
         }
     }
+    return true
 }
 
-function validateStrings(name, value) {
+function validateStrings(name, value, throws) {
     if (value === null || value === undefined || typeof value === 'string') {
-        return
+        return true
     }
-    throw new Error(`Invalid purl: "'${name}" argument must be a string.`)
+    if (throws) {
+        throw new Error(`Invalid purl: "'${name}" argument must be a string.`)
+    }
+    return false
 }
 
-function validateType(type) {
+function validateType(type, throws) {
     // The type cannot start with a number.
-    validateStartsWithoutNumber('type', type)
+    if (!validateStartsWithoutNumber('type', type, throws)) {
+        return false
+    }
     // The package type is composed only of ASCII letters and numbers,
     // '.', '+' and '-' (period, plus, and dash)
     for (let i = 0, { length } = type; i < length; i += 1) {
@@ -608,11 +761,15 @@ function validateType(type) {
                 )
             )
         ) {
-            throw new Error(
-                `Invalid purl: type "${type}" contains an illegal character.`
-            )
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: type "${type}" contains an illegal character.`
+                )
+            }
+            return false
         }
     }
+    return true
 }
 
 class PackageURL {
@@ -628,23 +785,24 @@ class PackageURL {
         rawQualifiers,
         rawSubpath
     ) {
-        validateRequired('type', rawType)
-        validateRequired('name', rawName)
+        validateRequired('type', rawType, true)
+        validateRequired('name', rawName, true)
 
-        validateStrings('type', rawType)
-        validateStrings('name', rawName)
-        validateStrings('namespace', rawNamespace)
-        validateStrings('version', rawVersion)
-        validateStrings('subpath', rawSubpath)
+        validateStrings('type', rawType, true)
+        validateStrings('name', rawName, true)
+        validateStrings('namespace', rawNamespace, true)
+        validateStrings('version', rawVersion, true)
+        validateStrings('subpath', rawSubpath, true)
 
         const type = normalizeType(rawType)
-        const qualifiers = normalizeQualifiers(rawQualifiers)
+        validateType(type, true)
+        validateQualifiers(rawQualifiers, true)
 
         this.type = type
-        this.name = normalizeName(rawName, qualifiers)
+        this.name = normalizeName(rawName)
         this.namespace = normalizeNamespace(rawNamespace)
         this.version = normalizeVersion(rawVersion)
-        this.qualifiers = qualifiers
+        this.qualifiers = normalizeQualifiers(rawQualifiers)
         this.subpath = normalizeSubpath(rawSubpath)
 
         const normalizer = Type.normalize[type]
@@ -655,7 +813,7 @@ class PackageURL {
         }
         const validator = Type.validate[type]
         if (typeof validator === 'function') {
-            validator(this)
+            validator(this, true)
         }
     }
 
