@@ -23,6 +23,84 @@ SOFTWARE.
 declare module "packageurl-js" {
 
   /**
+   * Collection of PURL component encode, normalize, and validate methods.
+   * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component specification}
+   */
+  type Component = Readonly<{
+    encode: Readonly<{
+      type: (type: any) => string,
+      namespace: (namespace: any) => string,
+      name: (name: any) => string,
+      version: (version: any) => string,
+      qualifiers: (qualifiers: any) => string,
+      subpath: (subpath: any) => string
+    }>
+    normalize: Readonly<{
+      type: (type: any) => string | undefined,
+      namespace: (namespace: string) => string | undefined,
+      name: (name: any) => string | undefined,
+      version: (version: any) => string | undefined,
+      qualifiers: (qualifiers: any) => { [key: string]: string } | undefined,
+      subpath: (subpath: any) => string | undefined
+    }>
+    validate: Readonly<{
+      type: (type: any, throws: boolean) => boolean
+      qualifierKey: (key: any, throws: boolean) => boolean
+      qualifiers: (qualifiers: any, throws: boolean) => boolean
+    }>
+  }>
+
+  /**
+  * Known qualifiers names.
+  * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs specification}
+  */
+  type KnownQualifierNames = Readonly<{
+    RepositoryUrl:'repository_url',
+    DownloadUrl: 'download_url',
+    VcsUrl: 'vcs_url',
+    FileName: 'file_name',
+    Checksum: 'checksum'
+  }>
+
+  /**
+   * Collection of PURL type normalize and validate methods.
+   * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#known-purl-types specification}
+   */
+  type Type = Readonly<{
+    normalize: Readonly<{
+      alpm: <T extends PackageURL>(purl: T) => T
+      apk: <T extends PackageURL>(purl: T) => T
+      bitbucket: <T extends PackageURL>(purl: T) => T
+      bitnami: <T extends PackageURL>(purl: T) => T
+      composer: <T extends PackageURL>(purl: T) => T
+      deb: <T extends PackageURL>(purl: T) => T
+      gitlab: <T extends PackageURL>(purl: T) => T
+      github: <T extends PackageURL>(purl: T) => T
+      golang: <T extends PackageURL>(purl: T) => T
+      hex:  <T extends PackageURL>(purl: T) => T
+      huggingface: <T extends PackageURL>(purl: T) => T
+      mlflow: <T extends PackageURL>(purl: T) => T
+      npm: <T extends PackageURL>(purl: T) => T
+      luarocks: <T extends PackageURL>(purl: T) => T
+      oci: <T extends PackageURL>(purl: T) => T
+      pub: <T extends PackageURL>(purl: T) => T
+      pypi: <T extends PackageURL>(purl: T) => T
+      qpkg: <T extends PackageURL>(purl: T) => T
+      rpm: <T extends PackageURL>(purl: T) => T
+    }>
+    validate: Readonly<{
+      conan: (purl: PackageURL, throws: boolean) => boolean
+      cran: (purl: PackageURL, throws: boolean) => boolean
+      golang: (purl: PackageURL, throws: boolean) => boolean
+      maven: (purl: PackageURL, throws: boolean) => boolean
+      mlflow: (purl: PackageURL, throws: boolean) => boolean
+      oci: (purl: PackageURL, throws: boolean) => boolean
+      pub: (purl: PackageURL, throws: boolean) => boolean
+      swift: (purl: PackageURL, throws: boolean) => boolean
+    }>
+  }>
+
+  /**
    * A purl or package URL is an attempt to standardize existing approaches to reliably identify and locate software packages.
    * A purl is a URL string used to identify and locate a software package in a mostly universal and uniform way across
    * programming languages, package managers, packaging conventions, tools, APIs and databases. Such a package URL is
@@ -31,83 +109,11 @@ declare module "packageurl-js" {
    */
   class PackageURL {
 
-    /**
-     * Collection of PURL component encode, normalize, and validate methods.
-     * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component specification}
-     */
-    static Component: Readonly<{
-      encode: Readonly<{
-        type: (type: any) => string,
-        namespace: (namespace: any) => string,
-        name: (name: any) => string,
-        version: (version: any) => string,
-        qualifiers: (qualifiers: any) => string,
-        subpath: (subpath: any) => string
-      }>,
-      normalize: Readonly<{
-        type: (type: any) => string | undefined,
-        namespace: (namespace: string) => string | undefined,
-        name: (name: any) => string | undefined,
-        version: (version: any) => string | undefined,
-        qualifiers: (qualifiers: any) => { [key: string]: string } | undefined,
-        subpath: (subpath: any) => string | undefined
-      }>,
-      validate: Readonly<{
-        type: (type: any, throws: boolean) => boolean
-        qualifierKey: (key: any, throws: boolean) => boolean
-        qualifiers: (qualifiers: any, throws: boolean) => boolean
-      }>
-    }>
+    static Component: Component
 
-    /**
-     * Known qualifiers names.
-     * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs specification}
-     */
-    static KnownQualifierNames: Readonly<{
-      RepositoryUrl:'repository_url',
-      DownloadUrl: 'download_url',
-      VcsUrl: 'vcs_url',
-      FileName: 'file_name',
-      Checksum: 'checksum'
-    }>
+    static KnownQualifierNames: KnownQualifierNames
 
-    /**
-     * Collection of PURL type normalize and validate methods.
-     * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst specification}
-     */
-    static Type: Readonly<{
-      normalize: Readonly<{
-        alpm: <T extends PackageURL>(purl: T) => T
-        apk: <T extends PackageURL>(purl: T) => T
-        bitbucket: <T extends PackageURL>(purl: T) => T
-        bitnami: <T extends PackageURL>(purl: T) => T
-        composer: <T extends PackageURL>(purl: T) => T
-        deb: <T extends PackageURL>(purl: T) => T
-        gitlab: <T extends PackageURL>(purl: T) => T
-        github: <T extends PackageURL>(purl: T) => T
-        golang: <T extends PackageURL>(purl: T) => T
-        hex:  <T extends PackageURL>(purl: T) => T
-        huggingface: <T extends PackageURL>(purl: T) => T
-        mlflow: <T extends PackageURL>(purl: T) => T
-        npm: <T extends PackageURL>(purl: T) => T
-        luarocks: <T extends PackageURL>(purl: T) => T
-        oci: <T extends PackageURL>(purl: T) => T
-        pub: <T extends PackageURL>(purl: T) => T
-        pypi: <T extends PackageURL>(purl: T) => T
-        qpkg: <T extends PackageURL>(purl: T) => T
-        rpm: <T extends PackageURL>(purl: T) => T
-      }>
-      validate: Readonly<{
-        conan: (purl: PackageURL, throws: boolean) => boolean
-        cran: (purl: PackageURL, throws: boolean) => boolean
-        golang: (purl: PackageURL, throws: boolean) => boolean
-        maven: (purl: PackageURL, throws: boolean) => boolean
-        mlflow: (purl: PackageURL, throws: boolean) => boolean
-        oci: (purl: PackageURL, throws: boolean) => boolean
-        pub: (purl: PackageURL, throws: boolean) => boolean
-        swift: (purl: PackageURL, throws: boolean) => boolean
-      }>
-    }>
+    static Type: Type
 
     /**
      *  The package "type" or package "protocol" such as maven, npm, nuget, gem, pypi, etc. Required.

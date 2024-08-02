@@ -29,7 +29,7 @@ const TEST_FILE = [
 ]
 
 /** @type {import('../src/package-url')} */
-const PackageURL = require('../src/package-url')
+const { PackageURL } = require('../src/package-url')
 
 describe('PackageURL', function () {
     describe('KnownQualifierNames', function () {

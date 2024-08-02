@@ -940,4 +940,9 @@ for (const staticProp of ['Component', 'KnownQualifierNames', 'Type']) {
 
 Reflect.setPrototypeOf(PackageURL.prototype, null)
 
-module.exports = PackageURL
+module.exports = {
+    Component,
+    KnownQualifierNames,
+    PackageURL,
+    Type
+}
