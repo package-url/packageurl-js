@@ -491,12 +491,12 @@ function normalizeQualifiers(rawQualifiers) {
         return undefined
     }
     const qualifiers = { __proto__: null }
-    const entries =
-        // URL searchParams have an "entries" method.
+    const entriesIterator =
+        // URL searchParams have an "entries" method that returns an iterator.
         typeof rawQualifiers.entries === 'function'
             ? rawQualifiers.entries()
             : Object.entries(rawQualifiers)
-    for (const { 0: key, 1: value } of entries) {
+    for (const { 0: key, 1: value } of entriesIterator) {
         const strValue = typeof value === 'string' ? value : String(value)
         const trimmed = strValue.trim()
         // Value cannot be an empty string: a key=value pair with an empty value
@@ -683,13 +683,13 @@ function validateQualifiers(qualifiers, throws) {
         }
         return false
     }
-    const keys =
-        // URL searchParams have an "keys" method.
+    const keysIterable =
+        // URL searchParams have an "keys" method that returns an iterator.
         typeof qualifiers.keys === 'function'
             ? qualifiers.keys()
             : Object.keys(qualifiers)
-    for (let i = 0, { length } = keys; i < length; i += 1) {
-        if (!validateQualifierKey(keys[i], throws)) {
+    for (const key of keysIterable) {
+        if (!validateQualifierKey(key, throws)) {
             return false
         }
     }
@@ -869,7 +869,12 @@ class PackageURL {
         }
 
         // Use WHATGW URL to split up the purl string.
-        const url = new URL(`pkg:${afterProtocol}`)
+        let url
+        try {
+            url = new URL(`pkg:${afterProtocol}`)
+        } catch {
+            throw new Error('Invalid purl: failed to parse as URL')
+        }
         // A purl must NOT contain a URL Authority i.e. there is no support for
         // username, password, host and port components.
         if (url.username !== '' || url.password !== '') {
