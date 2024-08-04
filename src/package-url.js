@@ -28,35 +28,49 @@ const LOOP_SENTINEL = 1_000_000
 const regexSemverNumberedGroups =
     /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
 
+const PurlComponentEncoder = (comp) =>
+    typeof comp === 'string' && comp.length ? encodeURIComponent(comp) : ''
+
+const PurlComponentStringNormalizer = (comp) =>
+    typeof comp === 'string' ? comp : undefined
+
+const PurlComponentValidator = (_comp, _throws) => true
+
+const PurlTypNormalizer = (purl) => purl
+
+const PurlTypeValidator = (_purl, _throws) => true
+
 // Rules for each purl component:
 // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
-const Component = {
-    __proto__: null,
-    encode: {
-        __proto__: null,
-        type: encodeType,
-        namespace: encodeNamespace,
-        name: encodeName,
-        version: encodeVersion,
-        qualifiers: encodeQualifiers,
-        subpath: encodeSubpath
+const Component = createHelpersNamespaceObject(
+    {
+        encode: {
+            namespace: encodeNamespace,
+            version: encodeVersion,
+            qualifiers: encodeQualifiers,
+            qualifierValue: encodeQualifierValue,
+            subpath: encodeSubpath
+        },
+        normalize: {
+            type: normalizeType,
+            namespace: normalizeNamespace,
+            name: normalizeName,
+            version: normalizeVersion,
+            qualifiers: normalizeQualifiers,
+            subpath: normalizeSubpath
+        },
+        validate: {
+            type: validateType,
+            qualifierKey: validateQualifierKey,
+            qualifiers: validateQualifiers
+        }
     },
-    normalize: {
-        __proto__: null,
-        type: normalizeType,
-        namespace: normalizeNamespace,
-        name: normalizeName,
-        version: normalizeVersion,
-        qualifiers: normalizeQualifiers,
-        subpath: normalizeSubpath
-    },
-    validate: {
-        __proto__: null,
-        type: validateType,
-        qualifierKey: validateQualifierKey,
-        qualifiers: validateQualifiers
+    {
+        encode: PurlComponentEncoder,
+        normalize: PurlComponentStringNormalizer,
+        validate: PurlComponentValidator
     }
-}
+)
 
 // Known qualifiers:
 // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
@@ -71,215 +85,213 @@ const KnownQualifierNames = {
 
 // PURL types:
 // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
-const Type = {
-    __proto__: null,
-    normalize: {
-        __proto__: null,
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#alpm
-        alpm(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#apk
-        apk(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitbucket
-        bitbucket(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitnami
-        bitnami(purl) {
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#composer
-        composer(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#deb
-        deb(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#other-candidate-types-to-define
-        gitlab(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#github
-        github(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
-        golang(purl) {
-            // Ignore case-insensitive rule because go.mod are case-sensitive.
-            // Pending spec change: https://github.com/package-url/purl-spec/pull/196
-            // lowerNamespace(purl)
-            // lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#hex
-        hex(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#huggingface
-        huggingface(purl) {
-            lowerVersion(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
-        mlflow(purl) {
-            if (purl.qualifiers?.repository_url?.includes('databricks')) {
+const Type = createHelpersNamespaceObject(
+    {
+        normalize: {
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#alpm
+            alpm(purl) {
+                lowerNamespace(purl)
                 lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#apk
+            apk(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitbucket
+            bitbucket(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitnami
+            bitnami(purl) {
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#composer
+            composer(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#deb
+            deb(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#other-candidate-types-to-define
+            gitlab(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#github
+            github(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
+            // golang(purl) {
+            //     // Ignore case-insensitive rule because go.mod are case-sensitive.
+            //     // Pending spec change: https://github.com/package-url/purl-spec/pull/196
+            //     lowerNamespace(purl)
+            //     lowerName(purl)
+            //     return purl
+            // },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#hex
+            hex(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#huggingface
+            huggingface(purl) {
+                lowerVersion(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
+            mlflow(purl) {
+                if (purl.qualifiers?.repository_url?.includes('databricks')) {
+                    lowerName(purl)
+                }
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#npm
+            npm(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#luarocks
+            luarocks(purl) {
+                lowerVersion(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
+            oci(purl) {
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
+            pub(purl) {
+                lowerName(purl)
+                purl.name = replaceDashesWithUnderscores(purl.name)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pypi
+            pypi(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                purl.name = replaceUnderscoresWithDashes(purl.name)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#qpkg
+            qpkg(purl) {
+                lowerNamespace(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#rpm
+            rpm(purl) {
+                lowerNamespace(purl)
+                return purl
             }
-            return purl
         },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#npm
-        npm(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#luarocks
-        luarocks(purl) {
-            lowerVersion(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
-        oci(purl) {
-            lowerName(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
-        pub(purl) {
-            lowerName(purl)
-            purl.name = replaceDashesWithUnderscores(purl.name)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pypi
-        pypi(purl) {
-            lowerNamespace(purl)
-            lowerName(purl)
-            purl.name = replaceUnderscoresWithDashes(purl.name)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#qpkg
-        qpkg(purl) {
-            lowerNamespace(purl)
-            return purl
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#rpm
-        rpm(purl) {
-            lowerNamespace(purl)
-            return purl
-        }
-    },
-    validate: {
-        // TODO: cocoapods name validation
-        // TODO: cpan namespace validation
-        // TODO: swid qualifier validation
-        __proto__: null,
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#conan
-        conan(purl, throws) {
-            if (isNullishOrEmptyString(purl.namespace)) {
-                if (purl.qualifiers?.channel) {
+        validate: {
+            // TODO: cocoapods name validation
+            // TODO: cpan namespace validation
+            // TODO: swid qualifier validation
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#conan
+            conan(purl, throws) {
+                if (isNullishOrEmptyString(purl.namespace)) {
+                    if (purl.qualifiers?.channel) {
+                        if (throws) {
+                            throw new Error(
+                                'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                            )
+                        }
+                        return false
+                    }
+                } else if (isNullishOrEmptyString(purl.qualifiers)) {
                     if (throws) {
                         throw new Error(
-                            'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                            'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
                         )
                     }
                     return false
                 }
-            } else if (isNullishOrEmptyString(purl.qualifiers)) {
-                if (throws) {
-                    throw new Error(
-                        'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
-                    )
-                }
-                return false
-            }
-            return true
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cran
-        cran(purl, throws) {
-            return validateRequiredByType(
-                'cran',
-                'version',
-                purl.version,
-                throws
-            )
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
-        golang(purl) {
-            // Still being lenient here since the standard changes aren't official.
-            // Pending spec change: https://github.com/package-url/purl-spec/pull/196
-            const { version } = purl
-            const length = typeof version === 'string' ? version.length : 0
-            // If the version starts with a "v" then ensure its a valid semver version.
-            // This, by semver semantics, also supports pseudo-version number.
-            // https://go.dev/doc/modules/version-numbers#pseudo-version-number
-            if (
-                length &&
-                version.charCodeAt(0) === 118 /*'v'*/ &&
-                !regexSemverNumberedGroups.test(version.slice(1))
-            ) {
-                if (throws) {
-                    throw new Error(
-                        'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
-                    )
-                }
-                return false
-            }
-            return true
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#maven
-        maven(purl, throws) {
-            return validateRequiredByType(
-                'maven',
-                'namespace',
-                purl.namespace,
-                throws
-            )
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
-        mlflow(purl, throws) {
-            return validateEmptyByType(
-                'mflow',
-                'namespace',
-                purl.namespace,
-                throws
-            )
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
-        oci(purl, throws) {
-            return validateEmptyByType(
-                'oci',
-                'namespace',
-                purl.namespace,
-                throws
-            )
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
-        pub(purl, throws) {
-            const { name } = purl
-            for (let i = 0, { length } = name; i < length; i += 1) {
-                const code = name.charCodeAt(i)
-                // prettier-ignore
+                return true
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cran
+            cran(purl, throws) {
+                return validateRequiredByType(
+                    'cran',
+                    'version',
+                    purl.version,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
+            golang(purl) {
+                // Still being lenient here since the standard changes aren't official.
+                // Pending spec change: https://github.com/package-url/purl-spec/pull/196
+                const { version } = purl
+                const length = typeof version === 'string' ? version.length : 0
+                // If the version starts with a "v" then ensure its a valid semver version.
+                // This, by semver semantics, also supports pseudo-version number.
+                // https://go.dev/doc/modules/version-numbers#pseudo-version-number
                 if (
+                    length &&
+                    version.charCodeAt(0) === 118 /*'v'*/ &&
+                    !regexSemverNumberedGroups.test(version.slice(1))
+                ) {
+                    if (throws) {
+                        throw new Error(
+                            'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
+                        )
+                    }
+                    return false
+                }
+                return true
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#maven
+            maven(purl, throws) {
+                return validateRequiredByType(
+                    'maven',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
+            mlflow(purl, throws) {
+                return validateEmptyByType(
+                    'mflow',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
+            oci(purl, throws) {
+                return validateEmptyByType(
+                    'oci',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
+            pub(purl, throws) {
+                const { name } = purl
+                for (let i = 0, { length } = name; i < length; i += 1) {
+                    const code = name.charCodeAt(i)
+                    // prettier-ignore
+                    if (
                     !(
                         (
                             (code >= 48 && code <= 57)  || // 0-9
@@ -295,22 +307,58 @@ const Type = {
                     }
                     return false
                 }
+                }
+                return true
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#swift
+            swift(purl, throws) {
+                return (
+                    validateRequiredByType(
+                        'swift',
+                        'namespace',
+                        purl.namespace,
+                        throws
+                    ) &&
+                    validateRequiredByType(
+                        'swift',
+                        'version',
+                        purl.version,
+                        throws
+                    )
+                )
             }
-            return true
-        },
-        // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#swift
-        swift(purl, throws) {
-            return (
-                validateRequiredByType(
-                    'swift',
-                    'namespace',
-                    purl.namespace,
-                    throws
-                ) &&
-                validateRequiredByType('swift', 'version', purl.version, throws)
-            )
         }
+    },
+    {
+        normalize: PurlTypNormalizer,
+        validate: PurlTypeValidator
     }
+)
+
+function createHelpersNamespaceObject(helpers, defaults = {}) {
+    const helperNames = Object.keys(helpers).sort()
+    const propNames = [
+        ...new Set([...Object.values(helpers)].map(Object.keys).flat())
+    ].sort()
+    const nsObject = Object.create(null)
+    for (let i = 0, { length } = propNames; i < length; i += 1) {
+        const propName = propNames[i]
+        const helpersForProp = Object.create(null)
+        for (
+            let j = 0, { length: length_j } = helperNames;
+            j < length_j;
+            j += 1
+        ) {
+            const helperName = helperNames[j]
+            const helperValue =
+                helpers[helperName][propName] ?? defaults[helperName]
+            if (helperValue !== undefined) {
+                helpersForProp[helperName] = helperValue
+            }
+        }
+        nsObject[propName] = helpersForProp
+    }
+    return nsObject
 }
 
 function encodeWithColonAndForwardSlash(str) {
@@ -325,23 +373,12 @@ function encodeWithForwardSlash(str) {
     return encodeURIComponent(str).replace(/%2F/g, '/')
 }
 
-function encodeType(type) {
-    return typeof type === 'string' && type.length
-        ? encodeURIComponent(type)
-        : ''
-}
-
 function encodeNamespace(namespace) {
     return typeof namespace === 'string' && namespace.length
         ? encodeWithColonAndForwardSlash(namespace)
         : ''
 }
 
-function encodeName(name) {
-    return typeof name === 'string' && name.length
-        ? encodeURIComponent(name)
-        : ''
-}
 function encodeVersion(version) {
     return typeof version === 'string' && version.length
         ? encodeWithColonAndPlusSign(version)
@@ -355,10 +392,16 @@ function encodeQualifiers(qualifiers) {
         const qualifiersKeys = Object.keys(qualifiers).sort()
         for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
             const key = qualifiersKeys[i]
-            query = `${query}${i === 0 ? '' : '&'}${key}=${encodeWithColonAndForwardSlash(qualifiers[key])}`
+            query = `${query}${i === 0 ? '' : '&'}${key}=${encodeQualifierValue(qualifiers[key])}`
         }
     }
     return query
+}
+
+function encodeQualifierValue(qualifierValue) {
+    return typeof qualifierValue === 'string' && qualifierValue.length
+        ? encodeWithColonAndForwardSlash(qualifierValue)
+        : ''
 }
 
 function encodeSubpath(subpath) {
@@ -794,44 +837,39 @@ class PackageURL {
         validateStrings('version', rawVersion, true)
         validateStrings('subpath', rawSubpath, true)
 
-        const type = normalizeType(rawType)
-        validateType(type, true)
-        validateQualifiers(rawQualifiers, true)
+        const type = Component.type.normalize(rawType)
+        Component.type.validate(type, true)
+        Component.qualifiers.validate(rawQualifiers, true)
 
         this.type = type
-        this.name = normalizeName(rawName)
-        this.namespace = normalizeNamespace(rawNamespace)
-        this.version = normalizeVersion(rawVersion)
-        this.qualifiers = normalizeQualifiers(rawQualifiers)
-        this.subpath = normalizeSubpath(rawSubpath)
+        this.name = Component.name.normalize(rawName)
+        this.namespace = Component.namespace.normalize(rawNamespace)
+        this.version = Component.version.normalize(rawVersion)
+        this.qualifiers = Component.qualifiers.normalize(rawQualifiers)
+        this.subpath = Component.subpath.normalize(rawSubpath)
 
-        const normalizer = Type.normalize[type]
-        // Apply type-specific normalization to the name if needed.
-        // Apply type-specific normalization to each namespace segment if needed.
-        if (typeof normalizer === 'function') {
-            normalizer(this)
-        }
-        const validator = Type.validate[type]
-        if (typeof validator === 'function') {
-            validator(this, true)
+        const typeHelpers = Type[type]
+        if (typeHelpers) {
+            typeHelpers.normalize(this)
+            typeHelpers.validate(this, true)
         }
     }
 
     toString() {
         const { namespace, name, version, qualifiers, subpath, type } = this
-        let purlStr = `pkg:${encodeType(type)}/`
+        let purlStr = `pkg:${Component.type.encode(type)}/`
         if (namespace) {
-            purlStr = `${purlStr}${encodeNamespace(namespace)}/`
+            purlStr = `${purlStr}${Component.namespace.encode(namespace)}/`
         }
-        purlStr = `${purlStr}${encodeName(name)}`
+        purlStr = `${purlStr}${Component.name.encode(name)}`
         if (version) {
-            purlStr = `${purlStr}@${encodeVersion(version)}`
+            purlStr = `${purlStr}@${Component.version.encode(version)}`
         }
         if (qualifiers) {
-            purlStr = `${purlStr}?${encodeQualifiers(qualifiers)}`
+            purlStr = `${purlStr}?${Component.qualifiers.encode(qualifiers)}`
         }
         if (subpath) {
-            purlStr = `${purlStr}#${encodeSubpath(subpath)}`
+            purlStr = `${purlStr}#${Component.subpath.encode(subpath)}`
         }
         return purlStr
     }
@@ -941,8 +979,8 @@ for (const staticProp of ['Component', 'KnownQualifierNames', 'Type']) {
 Reflect.setPrototypeOf(PackageURL.prototype, null)
 
 module.exports = {
-    Component,
-    KnownQualifierNames,
     PackageURL,
-    Type
+    PurlComponent: Component,
+    PurlQualifierNames: KnownQualifierNames,
+    PurlType: Type
 }

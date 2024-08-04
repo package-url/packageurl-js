@@ -34,34 +34,32 @@ declare module "packageurl-js" {
 
   export type PurlTypNormalizer = <T extends PackageURL>(purl: T) => T
 
-  export type PurlTypeValidater = (purl: PackageURL, throws: boolean) => boolean
+  export type PurlTypeValidator = (purl: PackageURL, throws: boolean) => boolean
+
+  export type PurlComponentEntry = ReadOnly<{
+    encode: PurlComponentEncoder
+    normalize: PurlComponentStringNormalizer
+    validate: PurlComponentValidator
+  }>
+
+  export type PurlTypeEntry = ReadOnly<{
+    normalize: PurlTypNormalizer
+    validate: PurlTypeValidator
+  }>
 
   /**
    * Collection of PURL component encode, normalize, and validate methods.
    * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component specification}
    */
-  export type PurlComponentHelpers = ReadOnly<{
-    encode: ReadOnly<{
-      type: PurlComponentEncoder
-      namespace: PurlComponentEncoder
-      name: PurlComponentEncoder
-      version: PurlComponentEncoder
-      qualifiers: PurlComponentEncoder
-      subpath: PurlComponentEncoder
-    }>
-    normalize: ReadOnly<{
-      type: PurlComponentStringNormalizer
-      namespace: PurlComponentStringNormalizer
-      name: PurlComponentStringNormalizer
-      version: PurlComponentStringNormalizer
-      qualifiers: PurlComponentQualifiersNormalizer
-      subpath: PurlComponentStringNormalizer
-    }>
-    validate: ReadOnly<{
-      type: PurlComponentValidator
-      qualifierKey: PurlComponentValidator
-      qualifiers: PurlComponentValidator
-    }>
+  export type PurlComponent = ReadOnly<{
+    type: PurlComponentEntry
+    namespace: PurlComponentEntry
+    name: PurlComponentEntry
+    version: PurlComponentEntry
+    qualifierKey: PurlComponentEntry
+    qualifiers: PurlComponentEntry
+    qualifierValue: PurlComponentEntry
+    subpath: PurlComponentEntry
   }>
 
   /**
@@ -80,45 +78,31 @@ declare module "packageurl-js" {
    * Collection of PURL type normalize and validate methods.
    * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#known-purl-types specification}
    */
-  export type PurlTypeHelpers = ReadOnly<{
-    normalize: ReadOnly<{
-      alpm: PurlTypNormalizer
-      apk: PurlTypNormalizer
-      bitbucket: PurlTypNormalizer
-      bitnami: PurlTypNormalizer
-      composer: PurlTypNormalizer
-      deb: PurlTypNormalizer
-      gitlab: PurlTypNormalizer
-      github: PurlTypNormalizer
-      golang: PurlTypNormalizer
-      hex: PurlTypNormalizer
-      huggingface: PurlTypNormalizer
-      mlflow: PurlTypNormalizer
-      npm: PurlTypNormalizer
-      luarocks: PurlTypNormalizer
-      oci: PurlTypNormalizer
-      pub: PurlTypNormalizer
-      pypi: PurlTypNormalizer
-      qpkg: PurlTypNormalizer
-      rpm: PurlTypNormalizer
-    }>
-    validate: ReadOnly<{
-      conan: PurlTypeValidater
-      cran: PurlTypeValidater
-      golang: PurlTypeValidater
-      maven: PurlTypeValidater
-      mlflow: PurlTypeValidater
-      oci: PurlTypeValidater
-      pub: PurlTypeValidater
-      swift: PurlTypeValidater
-    }>
+  export type PurlType = ReadOnly<{
+    alpm: PurlTypeEntry
+    apk: PurlTypeEntry
+    bitbucket: PurlTypeEntry
+    bitnami: PurlTypeEntry
+    composer: PurlTypeEntry
+    conan: PurlTypeEntry
+    cran: PurlTypeEntry
+    deb: PurlTypeEntry
+    github: PurlTypeEntry
+    gitlab: PurlTypeEntry
+    golang: PurlTypeEntry
+    hex: PurlTypeEntry
+    huggingface: PurlTypeEntry
+    luarocks: PurlTypeEntry
+    maven: PurlTypeEntry
+    mlflow: PurlTypeEntry
+    npm: PurlTypeEntry
+    oci: PurlTypeEntry
+    pub: PurlTypeEntry
+    pypi: PurlTypeEntry
+    qpkg: PurlTypeEntry
+    rpm: PurlTypeEntry
+    swift: PurlTypeEntry
   }>
-
-  export const Component = <PurlComponentHelpers>{}
-
-  export const KnownQualifierNames = <PurlQualifierNames>{}
-
-  export const Type = <PurlTypeHelpers>{}
 
   /**
    * A purl or package URL is an attempt to standardize existing approaches to reliably identify and locate software packages.
@@ -129,11 +113,11 @@ declare module "packageurl-js" {
    */
   export class PackageURL {
 
-    static Component: PurlComponentHelpers
+    static Component: PurlComponent
 
     static KnownQualifierNames: PurlQualifierNames
 
-    static Type: PurlTypeHelpers
+    static Type: PurlType
 
     /**
      *  The package "type" or package "protocol" such as maven, npm, nuget, gem, pypi, etc. Required.
@@ -198,4 +182,10 @@ declare module "packageurl-js" {
       subpath: string | undefined
     ]
   }
+
+  export const PurlComponent = <PurlComponent>{}
+
+  export const PurlQualifierNames = <PurlQualifierNames>{}
+
+  export const PurlType = <PurlType>{}
 }
