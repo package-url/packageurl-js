@@ -22,76 +22,157 @@ SOFTWARE.
 
 declare module "packageurl-js" {
 
+  export type PurlQualifiers = { [key: string]: string }
+
+  export type PurlComponentEncoder = (comp: any) => string
+
+  export type PurlComponentQualifiersNormalizer = (comp: any) => PurlQualifiers | undefined
+
+  export type PurlComponentStringNormalizer = (comp: any) => string | undefined
+
+  export type PurlComponentValidator = (comp: any, throws: boolean) => boolean
+
+  export type PurlTypNormalizer = <T extends PackageURL>(purl: T) => T
+
+  export type PurlTypeValidator = (purl: PackageURL, throws: boolean) => boolean
+
+  export type PurlComponentEntry = ReadOnly<{
+    encode: PurlComponentEncoder
+    normalize: PurlComponentStringNormalizer
+    validate: PurlComponentValidator
+  }>
+
+  export type PurlTypeEntry = ReadOnly<{
+    normalize: PurlTypNormalizer
+    validate: PurlTypeValidator
+  }>
+
+  /**
+   * Collection of PURL component encode, normalize, and validate methods.
+   * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component specification}
+   */
+  export type PurlComponent = ReadOnly<{
+    type: PurlComponentEntry
+    namespace: PurlComponentEntry
+    name: PurlComponentEntry
+    version: PurlComponentEntry
+    qualifierKey: PurlComponentEntry
+    qualifiers: PurlComponentEntry
+    qualifierValue: PurlComponentEntry
+    subpath: PurlComponentEntry
+  }>
+
+  /**
+   * Known qualifiers names.
+   * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs specification}
+   */
+  export type PurlQualifierNames = ReadOnly<{
+    RepositoryUrl:'repository_url',
+    DownloadUrl: 'download_url',
+    VcsUrl: 'vcs_url',
+    FileName: 'file_name',
+    Checksum: 'checksum'
+  }>
+
+  /**
+   * Collection of PURL type normalize and validate methods.
+   * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#known-purl-types specification}
+   */
+  export type PurlType = ReadOnly<{
+    alpm: PurlTypeEntry
+    apk: PurlTypeEntry
+    bitbucket: PurlTypeEntry
+    bitnami: PurlTypeEntry
+    composer: PurlTypeEntry
+    conan: PurlTypeEntry
+    cran: PurlTypeEntry
+    deb: PurlTypeEntry
+    github: PurlTypeEntry
+    gitlab: PurlTypeEntry
+    golang: PurlTypeEntry
+    hex: PurlTypeEntry
+    huggingface: PurlTypeEntry
+    luarocks: PurlTypeEntry
+    maven: PurlTypeEntry
+    mlflow: PurlTypeEntry
+    npm: PurlTypeEntry
+    oci: PurlTypeEntry
+    pub: PurlTypeEntry
+    pypi: PurlTypeEntry
+    qpkg: PurlTypeEntry
+    rpm: PurlTypeEntry
+    swift: PurlTypeEntry
+  }>
+
   /**
    * A purl or package URL is an attempt to standardize existing approaches to reliably identify and locate software packages.
-   * A purl is a URL string used to identify and locate a software package in a mostly universal and uniform way across programing languages,
-   * package managers, packaging conventions, tools, APIs and databases.
-   * Such a package URL is useful to reliably reference the same software package using a simple and expressive syntax and conventions based on familiar URLs.
+   * A purl is a URL string used to identify and locate a software package in a mostly universal and uniform way across
+   * programming languages, package managers, packaging conventions, tools, APIs and databases. Such a package URL is
+   * useful to reliably reference the same software package using a simple and expressive syntax and conventions based
+   * on familiar URLs.
    */
-  class PackageURL {
+  export class PackageURL {
+
+    static Component: PurlComponent
+
+    static KnownQualifierNames: PurlQualifierNames
+
+    static Type: PurlType
 
     /**
-     * Known qualifiers names.
-     * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs specification}
+     *  The package "type" or package "protocol" such as maven, npm, nuget, gem, pypi, etc. Required.
      */
-    static KnownQualifierNames: Readonly<{
-      RepositoryUrl:'repository_url',
-      DownloadUrl: 'download_url',
-      VcsUrl: 'vcs_url',
-      FileName: 'file_name',
-      Checksum: 'checksum'
-    }>
+    type: string
 
     /**
-     *  the package "type" or package "protocol" such as maven, npm, nuget, gem, pypi, etc. Required.
+     * Some name prefix such as a Maven groupid, a Docker image owner, a GitHub user or organization. Optional and type-specific.
      */
-    type: string;
+    namespace: string | undefined
 
     /**
-     * some name prefix such as a Maven groupid, a Docker image owner, a GitHub user or organization. Optional and type-specific.
+     * The name of the package. Required.
      */
-    namespace: string | undefined;
+    name: string
 
     /**
-     * the name of the package. Required.
+     * The version of the package. Optional.
      */
-    name: string;
+    version: string | undefined
 
     /**
-     * the version of the package. Optional.
+     * Extra qualifying data for a package such as an OS, architecture, a distro, etc. Optional and type-specific.
      */
-    version: string | undefined;
+    qualifiers: PurlQualifiers | undefined
 
     /**
-     * extra qualifying data for a package such as an OS, architecture, a distro, etc. Optional and type-specific.
+     * Extra subpath within a package, relative to the package root. Optional.
      */
-    qualifiers: {
-      [key: string]: string;
-    } | undefined;
+    subpath: string | undefined
 
-    /**
-     * extra subpath within a package, relative to the package root. Optional.
-     */
-    subpath: string | undefined;
-
-    constructor(type: string,
+    constructor(
+      type: string,
       namespace: string | undefined | null,
       name: string,
-      version: string | undefined | null,
-      qualifiers: { [key: string]: string; } | undefined | null,
-      subpath: string | undefined | null);
+      version?: string | undefined | null,
+      qualifiers?: PurlQualifiers | undefined | null,
+      subpath?: string | undefined | null
+    )
 
     /**
-     * Converts the PackageURL to a string
+     * Converts the PackageURL to a string.
      */
-    toString(): string;
+    toString(): string
 
     /**
-     * Parses a string tp a PackageURL
-     * @param purl string to parse
+     * Parses a purl string into a PackageURL instance.
+     * @param purlStr string to parse
      */
-    static fromString(purl: string): PackageURL
-
+    static fromString(purlStr: string): PackageURL
   }
 
+  export const PurlComponent = <PurlComponent>{}
+
+  export const PurlQualifierNames = <PurlQualifierNames>{}
+
+  export const PurlType = <PurlType>{}
 }

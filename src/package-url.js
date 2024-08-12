@@ -19,224 +19,1034 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-'use strict';
+'use strict'
 
-const KnownQualifierNames = Object.freeze({
-  // known qualifiers as defined here:
-  // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
-  RepositoryUrl: 'repository_url',
-  DownloadUrl: 'download_url',
-  VcsUrl: 'vcs_url',
-  FileName: 'file_name',
-  Checksum: 'checksum'
-});
+const LOOP_SENTINEL = 1_000_000
 
-function encodeWithColon(str) {
-  return encodeURIComponent(str).replace(/%3A/g, ':');
+// This regexp is valid as of 2024-08-01.
+// https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+const regexSemverNumberedGroups =
+    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+
+const PurlComponentEncoder = (comp) =>
+    typeof comp === 'string' && comp.length ? encodeURIComponent(comp) : ''
+
+const PurlComponentStringNormalizer = (comp) =>
+    typeof comp === 'string' ? comp : undefined
+
+const PurlComponentValidator = (_comp, _throws) => true
+
+const PurlTypNormalizer = (purl) => purl
+
+const PurlTypeValidator = (_purl, _throws) => true
+
+// Rules for each purl component:
+// https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component
+const Component = createHelpersNamespaceObject(
+    {
+        encode: {
+            namespace: encodeNamespace,
+            version: encodeVersion,
+            qualifiers: encodeQualifiers,
+            qualifierValue: encodeQualifierValue,
+            subpath: encodeSubpath
+        },
+        normalize: {
+            type: normalizeType,
+            namespace: normalizeNamespace,
+            name: normalizeName,
+            version: normalizeVersion,
+            qualifiers: normalizeQualifiers,
+            subpath: normalizeSubpath
+        },
+        validate: {
+            type: validateType,
+            namespace: validateNamespace,
+            name: validateName,
+            version: validateVersion,
+            qualifierKey: validateQualifierKey,
+            qualifiers: validateQualifiers,
+            subpath: validateSubpath
+        }
+    },
+    {
+        encode: PurlComponentEncoder,
+        normalize: PurlComponentStringNormalizer,
+        validate: PurlComponentValidator
+    }
+)
+
+// Known qualifiers:
+// https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs
+const KnownQualifierNames = {
+    __proto__: null,
+    RepositoryUrl: 'repository_url',
+    DownloadUrl: 'download_url',
+    VcsUrl: 'vcs_url',
+    FileName: 'file_name',
+    Checksum: 'checksum'
+}
+
+// PURL types:
+// https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst
+const Type = createHelpersNamespaceObject(
+    {
+        normalize: {
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#alpm
+            alpm(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#apk
+            apk(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitbucket
+            bitbucket(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#bitnami
+            bitnami(purl) {
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#composer
+            composer(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#deb
+            deb(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#other-candidate-types-to-define
+            gitlab(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#github
+            github(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
+            // golang(purl) {
+            //     // Ignore case-insensitive rule because go.mod are case-sensitive.
+            //     // Pending spec change: https://github.com/package-url/purl-spec/pull/196
+            //     lowerNamespace(purl)
+            //     lowerName(purl)
+            //     return purl
+            // },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#hex
+            hex(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#huggingface
+            huggingface(purl) {
+                lowerVersion(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
+            mlflow(purl) {
+                if (purl.qualifiers?.repository_url?.includes('databricks')) {
+                    lowerName(purl)
+                }
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#npm
+            npm(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#luarocks
+            luarocks(purl) {
+                lowerVersion(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
+            oci(purl) {
+                lowerName(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
+            pub(purl) {
+                lowerName(purl)
+                purl.name = replaceDashesWithUnderscores(purl.name)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pypi
+            pypi(purl) {
+                lowerNamespace(purl)
+                lowerName(purl)
+                purl.name = replaceUnderscoresWithDashes(purl.name)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#qpkg
+            qpkg(purl) {
+                lowerNamespace(purl)
+                return purl
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#rpm
+            rpm(purl) {
+                lowerNamespace(purl)
+                return purl
+            }
+        },
+        validate: {
+            // TODO: cocoapods name validation
+            // TODO: cpan namespace validation
+            // TODO: swid qualifier validation
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#conan
+            conan(purl, throws) {
+                if (isNullishOrEmptyString(purl.namespace)) {
+                    if (purl.qualifiers?.channel) {
+                        if (throws) {
+                            throw new Error(
+                                'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                            )
+                        }
+                        return false
+                    }
+                } else if (isNullishOrEmptyString(purl.qualifiers)) {
+                    if (throws) {
+                        throw new Error(
+                            'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
+                        )
+                    }
+                    return false
+                }
+                return true
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#cran
+            cran(purl, throws) {
+                return validateRequiredByType(
+                    'cran',
+                    'version',
+                    purl.version,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
+            golang(purl) {
+                // Still being lenient here since the standard changes aren't official.
+                // Pending spec change: https://github.com/package-url/purl-spec/pull/196
+                const { version } = purl
+                const length = typeof version === 'string' ? version.length : 0
+                // If the version starts with a "v" then ensure its a valid semver version.
+                // This, by semver semantics, also supports pseudo-version number.
+                // https://go.dev/doc/modules/version-numbers#pseudo-version-number
+                if (
+                    length &&
+                    version.charCodeAt(0) === 118 /*'v'*/ &&
+                    !regexSemverNumberedGroups.test(version.slice(1))
+                ) {
+                    if (throws) {
+                        throw new Error(
+                            'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
+                        )
+                    }
+                    return false
+                }
+                return true
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#maven
+            maven(purl, throws) {
+                return validateRequiredByType(
+                    'maven',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
+            mlflow(purl, throws) {
+                return validateEmptyByType(
+                    'mflow',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
+            oci(purl, throws) {
+                return validateEmptyByType(
+                    'oci',
+                    'namespace',
+                    purl.namespace,
+                    throws
+                )
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#pub
+            pub(purl, throws) {
+                const { name } = purl
+                for (let i = 0, { length } = name; i < length; i += 1) {
+                    const code = name.charCodeAt(i)
+                    // prettier-ignore
+                    if (
+                    !(
+                        (
+                            (code >= 48 && code <= 57)  || // 0-9
+                            (code >= 97 && code <= 122) || // a-z
+                            code === 95 // _
+                        )
+                    )
+                ) {
+                    if (throws) {
+                        throw new Error(
+                            'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
+                        )
+                    }
+                    return false
+                }
+                }
+                return true
+            },
+            // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#swift
+            swift(purl, throws) {
+                return (
+                    validateRequiredByType(
+                        'swift',
+                        'namespace',
+                        purl.namespace,
+                        throws
+                    ) &&
+                    validateRequiredByType(
+                        'swift',
+                        'version',
+                        purl.version,
+                        throws
+                    )
+                )
+            }
+        }
+    },
+    {
+        normalize: PurlTypNormalizer,
+        validate: PurlTypeValidator
+    }
+)
+
+function createHelpersNamespaceObject(helpers, defaults = {}) {
+    const helperNames = Object.keys(helpers).sort()
+    const propNames = [
+        ...new Set([...Object.values(helpers)].map(Object.keys).flat())
+    ].sort()
+    const nsObject = Object.create(null)
+    for (let i = 0, { length } = propNames; i < length; i += 1) {
+        const propName = propNames[i]
+        const helpersForProp = Object.create(null)
+        for (
+            let j = 0, { length: length_j } = helperNames;
+            j < length_j;
+            j += 1
+        ) {
+            const helperName = helperNames[j]
+            const helperValue =
+                helpers[helperName][propName] ?? defaults[helperName]
+            if (helperValue !== undefined) {
+                helpersForProp[helperName] = helperValue
+            }
+        }
+        nsObject[propName] = helpersForProp
+    }
+    return nsObject
 }
 
 function encodeWithColonAndForwardSlash(str) {
-  return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2F/g, '/');
+    return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2F/g, '/')
 }
 
 function encodeWithColonAndPlusSign(str) {
-  return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2B/g,'+');
+    return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2B/g, '+')
 }
 
 function encodeWithForwardSlash(str) {
-  return encodeURIComponent(str).replace(/%2F/g, '/');
+    return encodeURIComponent(str).replace(/%2F/g, '/')
 }
 
-function valifateQualifiers(qualifiers) {
-  if (typeof qualifiers !== 'object' || qualifiers === null) {
-    throw new Error('Invalid purl: "qualifiers" argument must be a dictionary.');
-  }
-  const qualifiersKeys = Object.keys(qualifiers);
-  for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
-    const key = qualifiersKeys[i];
-    if (!/^[a-z]+$/i.test(key) && !/[\.-_]/.test(key)) {
-      throw new Error(`Invalid purl: qualifier "${key}" contains an illegal character.`);
+function encodeNamespace(namespace) {
+    return typeof namespace === 'string' && namespace.length
+        ? encodeWithColonAndForwardSlash(namespace)
+        : ''
+}
+
+function encodeVersion(version) {
+    return typeof version === 'string' && version.length
+        ? encodeWithColonAndPlusSign(version)
+        : ''
+}
+
+function encodeQualifiers(qualifiers) {
+    let query = ''
+    if (qualifiers !== null && typeof qualifiers === 'object') {
+        // Sort this list of qualifier strings lexicographically.
+        const qualifiersKeys = Object.keys(qualifiers).sort()
+        for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
+            const key = qualifiersKeys[i]
+            query = `${query}${i === 0 ? '' : '&'}${key}=${encodeQualifierValue(qualifiers[key])}`
+        }
     }
-  }
+    return query
 }
 
-function validateRequired(name, value) {
-  if (!value) {
-    throw new Error(`Invalid purl: "${name}" is a required field.`);
-  }
+function encodeQualifierValue(qualifierValue) {
+    return typeof qualifierValue === 'string' && qualifierValue.length
+        ? encodeWithColonAndForwardSlash(qualifierValue)
+        : ''
 }
 
-function validateStrings(name, value) {
-  if (typeof value === 'string' ? value.length === 0 : value) {
-    throw new Error(`Invalid purl: "'${name}" argument must be a non-empty string.`);
-  }
+function encodeSubpath(subpath) {
+    return typeof subpath === 'string' && subpath.length
+        ? encodeWithForwardSlash(subpath)
+        : ''
+}
+
+function isBlank(str) {
+    for (let i = 0, { length } = str; i < length; i += 1) {
+        const code = str.charCodeAt(i)
+        // prettier-ignore
+        if (
+            !(
+                // Whitespace characters according to ECMAScript spec:
+                // https://tc39.es/ecma262/#sec-white-space
+                (
+                    code === 0x0020 || // Space
+                    code === 0x0009 || // Tab
+                    code === 0x000a || // Line Feed
+                    code === 0x000b || // Vertical Tab
+                    code === 0x000c || // Form Feed
+                    code === 0x000d || // Carriage Return
+                    code === 0x00a0 || // No-Break Space
+                    code === 0x1680 || // Ogham Space Mark
+                    code === 0x2000 || // En Quad
+                    code === 0x2001 || // Em Quad
+                    code === 0x2002 || // En Space
+                    code === 0x2003 || // Em Space
+                    code === 0x2004 || // Three-Per-Em Space
+                    code === 0x2005 || // Four-Per-Em Space
+                    code === 0x2006 || // Six-Per-Em Space
+                    code === 0x2007 || // Figure Space
+                    code === 0x2008 || // Punctuation Space
+                    code === 0x2009 || // Thin Space
+                    code === 0x200a || // Hair Space
+                    code === 0x2028 || // Line Separator
+                    code === 0x2029 || // Paragraph Separator
+                    code === 0x202f || // Narrow No-Break Space
+                    code === 0x205f || // Medium Mathematical Space
+                    code === 0x3000 || // Ideographic Space
+                    code === 0xfeff    // Byte Order Mark
+                )
+            )
+        ) {
+            return false
+        }
+    }
+    return true
+}
+
+function isNonEmptyString(value) {
+    return typeof value === 'string' && value.length > 0
+}
+
+function isNullishOrEmptyString(value) {
+    return (
+        value === null ||
+        value === undefined ||
+        (typeof value === 'string' && value.length === 0)
+    )
+}
+
+function isObject(value) {
+    return value !== null && typeof value === 'object'
+}
+
+function lowerName(purl) {
+    purl.name = purl.name.toLowerCase()
+}
+
+function lowerNamespace(purl) {
+    const { namespace } = purl
+    if (typeof namespace === 'string') {
+        purl.namespace = namespace.toLowerCase()
+    }
+}
+
+function lowerVersion(purl) {
+    const { version } = purl
+    if (typeof version === 'string') {
+        purl.version = version.toLowerCase()
+    }
+}
+
+function normalizeName(rawName) {
+    return typeof rawName === 'string'
+        ? decodeURIComponent(rawName).trim()
+        : undefined
+}
+
+function normalizeNamespace(rawNamespace) {
+    return typeof rawNamespace === 'string'
+        ? normalizePath(decodeURIComponent(rawNamespace))
+        : undefined
+}
+
+function normalizePath(pathname, callback) {
+    let collapsed = ''
+    let start = 0
+    // Leading and trailing slashes, i.e. '/', are not significant and should be
+    // stripped in the canonical form.
+    while (pathname.charCodeAt(start) === 47 /*'/'*/) {
+        start += 1
+    }
+    let nextIndex = pathname.indexOf('/', start)
+    if (nextIndex === -1) {
+        return pathname.slice(start)
+    }
+    // Discard any empty string segments by collapsing repeated segment
+    // separator slashes, i.e. '/'.
+    while (nextIndex !== -1) {
+        const segment = pathname.slice(start, nextIndex)
+        if (callback === undefined || callback(segment)) {
+            collapsed =
+                collapsed + (collapsed.length === 0 ? '' : '/') + segment
+        }
+        start = nextIndex + 1
+        while (pathname.charCodeAt(start) === 47) {
+            start += 1
+        }
+        nextIndex = pathname.indexOf('/', start)
+    }
+    const lastSegment = pathname.slice(start)
+    if (
+        lastSegment.length !== 0 &&
+        (callback === undefined || callback(lastSegment))
+    ) {
+        collapsed = collapsed + '/' + lastSegment
+    }
+    return collapsed
+}
+
+function normalizeQualifiers(rawQualifiers) {
+    if (
+        rawQualifiers === null ||
+        rawQualifiers === undefined ||
+        typeof rawQualifiers !== 'object'
+    ) {
+        return undefined
+    }
+    const qualifiers = { __proto__: null }
+    const entriesIterator =
+        // URL searchParams have an "entries" method that returns an iterator.
+        typeof rawQualifiers.entries === 'function'
+            ? rawQualifiers.entries()
+            : Object.entries(rawQualifiers)
+    for (const { 0: key, 1: value } of entriesIterator) {
+        const strValue = typeof value === 'string' ? value : String(value)
+        const trimmed = strValue.trim()
+        // Value cannot be an empty string: a key=value pair with an empty value
+        // is the same as no key/value at all for this key.
+        if (trimmed.length === 0) continue
+        // A key is case insensitive. The canonical form is lowercase.
+        qualifiers[key.toLowerCase()] = trimmed
+    }
+    return qualifiers
+}
+
+function normalizeSubpath(rawSubpath) {
+    return typeof rawSubpath === 'string'
+        ? normalizePath(decodeURIComponent(rawSubpath), subpathFilter)
+        : undefined
+}
+
+function normalizeType(rawType) {
+    // The type must NOT be percent-encoded.
+    // The type is case insensitive. The canonical form is lowercase.
+    return typeof rawType === 'string'
+        ? decodeURIComponent(rawType).trim().toLowerCase()
+        : undefined
+}
+
+function normalizeVersion(rawVersion) {
+    return typeof rawVersion === 'string'
+        ? decodeURIComponent(rawVersion).trim()
+        : undefined
+}
+
+function recursiveFreeze(value_) {
+    if (
+        value_ === null ||
+        !(typeof value_ === 'object' || typeof value_ === 'function') ||
+        Object.isFrozen(value_)
+    ) {
+        return value_
+    }
+    const queue = [value_]
+    let { length: queueLength } = queue
+    let pos = 0
+    while (pos < queueLength) {
+        if (pos === LOOP_SENTINEL) {
+            throw new Error(
+                'Detected infinite loop in object crawl of recursiveFreeze'
+            )
+        }
+        const obj = queue[pos++]
+        Object.freeze(obj)
+        if (Array.isArray(obj)) {
+            for (let i = 0, { length } = obj; i < length; i += 1) {
+                const item = obj[i]
+                if (
+                    item !== null &&
+                    (typeof item === 'object' || typeof item === 'function') &&
+                    !Object.isFrozen(item)
+                ) {
+                    queue[queueLength++] = item
+                }
+            }
+        } else {
+            const keys = Reflect.ownKeys(obj)
+            for (let i = 0, { length } = keys; i < length; i += 1) {
+                const propValue = obj[keys[i]]
+                if (
+                    propValue !== null &&
+                    (typeof propValue === 'object' ||
+                        typeof propValue === 'function') &&
+                    !Object.isFrozen(propValue)
+                ) {
+                    queue[queueLength++] = propValue
+                }
+            }
+        }
+    }
+    return value_
+}
+
+function replaceDashesWithUnderscores(str) {
+    // Replace all "-" with "_"
+    let result = ''
+    let fromIndex = 0
+    let index = 0
+    while ((index = str.indexOf('-', fromIndex)) !== -1) {
+        result = result + str.slice(fromIndex, index) + '_'
+        fromIndex = index + 1
+    }
+    return fromIndex ? result + str.slice(fromIndex) : str
+}
+
+function replaceUnderscoresWithDashes(str) {
+    // Replace all "_" with "-"
+    let result = ''
+    let fromIndex = 0
+    let index = 0
+    while ((index = str.indexOf('_', fromIndex)) !== -1) {
+        result = result + str.slice(fromIndex, index) + '-'
+        fromIndex = index + 1
+    }
+    return fromIndex ? result + str.slice(fromIndex) : str
+}
+
+function subpathFilter(segment) {
+    // When percent-decoded, a segment
+    //   - must not be any of '.' or '..'
+    //   - must not be empty
+    const { length } = segment
+    if (length === 1 && segment.charCodeAt(0) === 46 /*'.'*/) return false
+    if (
+        length === 2 &&
+        segment.charCodeAt(0) === 46 &&
+        segment.charCodeAt(1) === 46
+    ) {
+        return false
+    }
+    return !isBlank(segment)
+}
+
+function trimLeadingSlashes(str) {
+    let start = 0
+    while (str.charCodeAt(start) === 47 /*'/'*/) {
+        start += 1
+    }
+    return start === 0 ? str : str.slice(start)
+}
+
+function validateEmptyByType(type, name, value, throws) {
+    if (!isNullishOrEmptyString(value)) {
+        if (throws) {
+            throw new Error(
+                `Invalid purl: ${type} "${name}" field must be empty.`
+            )
+        }
+        return false
+    }
+    return true
+}
+
+function validateName(name, throws) {
+    return (
+        validateRequired('name', name, throws) &&
+        validateStrings('name', name, throws)
+    )
+}
+
+function validateNamespace(namespace, throws) {
+    return validateStrings('namespace', namespace, throws)
+}
+
+function validateQualifiers(qualifiers, throws) {
+    if (qualifiers === null || qualifiers === undefined) {
+        return true
+    }
+    if (typeof qualifiers !== 'object') {
+        if (throws) {
+            throw new Error(
+                'Invalid purl: "qualifiers" argument must be an object.'
+            )
+        }
+        return false
+    }
+    const keysIterable =
+        // URL searchParams have an "keys" method that returns an iterator.
+        typeof qualifiers.keys === 'function'
+            ? qualifiers.keys()
+            : Object.keys(qualifiers)
+    for (const key of keysIterable) {
+        if (!validateQualifierKey(key, throws)) {
+            return false
+        }
+    }
+    return true
+}
+
+function validateQualifierKey(key, throws) {
+    // A key cannot start with a number.
+    if (!validateStartsWithoutNumber('qualifier', key, throws)) {
+        return false
+    }
+    // The key must be composed only of ASCII letters and numbers,
+    // '.', '-' and '_' (period, dash and underscore).
+    for (let i = 0, { length } = key; i < length; i += 1) {
+        const code = key.charCodeAt(i)
+        // prettier-ignore
+        if (
+            !(
+                (
+                    (code >= 48 && code <= 57)  || // 0-9
+                    (code >= 65 && code <= 90)  || // A-Z
+                    (code >= 97 && code <= 122) || // a-z
+                    code === 46 || // .
+                    code === 45 || // -
+                    code === 95    // _
+                )
+            )
+        ) {
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: qualifier "${key}" contains an illegal character.`
+                )
+            }
+            return false
+        }
+    }
+    return true
+}
+
+function validateRequired(name, value, throws) {
+    if (isNullishOrEmptyString(value)) {
+        if (throws) {
+            throw new Error(`Invalid purl: "${name}" is a required field.`)
+        }
+        return false
+    }
+    return true
+}
+
+function validateRequiredByType(type, name, value, throws) {
+    if (isNullishOrEmptyString(value)) {
+        if (throws) {
+            throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
+        }
+        return false
+    }
+    return true
+}
+
+function validateStartsWithoutNumber(name, value, throws) {
+    if (value.length !== 0) {
+        const code = value.charCodeAt(0)
+        if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: ${name} "${value}" cannot start with a number.`
+                )
+            }
+            return false
+        }
+    }
+    return true
+}
+
+function validateStrings(name, value, throws) {
+    if (value === null || value === undefined || typeof value === 'string') {
+        return true
+    }
+    if (throws) {
+        throw new Error(`Invalid purl: "'${name}" argument must be a string.`)
+    }
+    return false
+}
+
+function validateSubpath(subpath, throws) {
+    return validateStrings('subpath', subpath, throws)
+}
+
+function validateType(type, throws) {
+    // The type cannot be nullish, an empty string, or start with a number.
+    if (
+        !validateRequired('type', type, throws) ||
+        !validateStrings('type', type, throws) ||
+        !validateStartsWithoutNumber('type', type, throws)
+    ) {
+        return false
+    }
+    // The package type is composed only of ASCII letters and numbers,
+    // '.', '+' and '-' (period, plus, and dash)
+    for (let i = 0, { length } = type; i < length; i += 1) {
+        const code = type.charCodeAt(i)
+        // prettier-ignore
+        if (
+            !(
+                (
+                    (code >= 48 && code <= 57)  || // 0-9
+                    (code >= 65 && code <= 90)  || // A-Z
+                    (code >= 97 && code <= 122) || // a-z
+                    code === 46 || // .
+                    code === 43 || // +
+                    code === 45    // -
+                )
+            )
+        ) {
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: type "${type}" contains an illegal character.`
+                )
+            }
+            return false
+        }
+    }
+    return true
+}
+
+function validateVersion(version, throws) {
+    return validateStrings('version', version, throws)
 }
 
 class PackageURL {
+    static Component = recursiveFreeze(Component)
+    static KnownQualifierNames = recursiveFreeze(KnownQualifierNames)
+    static Type = recursiveFreeze(Type)
 
-  static get KnownQualifierNames() {
-    return KnownQualifierNames;
-  }
+    constructor(
+        rawType,
+        rawNamespace,
+        rawName,
+        rawVersion,
+        rawQualifiers,
+        rawSubpath
+    ) {
+        const type = isNonEmptyString(rawType)
+            ? Component.type.normalize(rawType)
+            : rawType
+        Component.type.validate(type, true)
 
-  constructor(type, namespace, name, version, qualifiers, subpath) {
-    validateRequired('type', type);
-    validateRequired('name', name);
+        const namespace = isNonEmptyString(rawNamespace)
+            ? Component.namespace.normalize(rawNamespace)
+            : rawNamespace
+        Component.namespace.validate(namespace, true)
 
-    validateStrings('type', type);
-    validateStrings('namespace', namespace);
-    validateStrings('name', name);
-    validateStrings('version', version);
-    validateStrings('subpath', subpath);
+        const name = isNonEmptyString(rawName)
+            ? Component.name.normalize(rawName)
+            : rawName
+        Component.name.validate(name, true)
 
-    if (qualifiers) {
-      valifateQualifiers(qualifiers);
+        const version = isNonEmptyString(rawVersion)
+            ? Component.version.normalize(rawVersion)
+            : rawVersion
+        Component.version.validate(version, true)
+
+        const qualifiers = isObject(rawQualifiers)
+            ? Component.qualifiers.normalize(rawQualifiers)
+            : rawQualifiers
+        Component.qualifiers.validate(qualifiers, true)
+
+        const subpath = isNonEmptyString(rawSubpath)
+            ? Component.subpath.normalize(rawSubpath)
+            : rawSubpath
+        Component.subpath.validate(subpath, true)
+
+        this.type = type
+        this.name = name
+        this.namespace = namespace ?? undefined
+        this.version = version ?? undefined
+        this.qualifiers = qualifiers ?? undefined
+        this.subpath = subpath ?? undefined
+
+        const typeHelpers = Type[type]
+        if (typeHelpers) {
+            typeHelpers.normalize(this)
+            typeHelpers.validate(this, true)
+        }
     }
 
-    this.type = type;
-    this.name = name;
-    this.namespace = namespace ?? undefined;
-    this.version = version ?? undefined;
-    this.qualifiers = qualifiers ?? undefined;
-    this.subpath = subpath ?? undefined;
-  }
-
-  _handlePyPi() {
-    this.name = this.name.toLowerCase().replaceAll('_', '-');
-  }
-  _handlePub() {
-    const lowered = this.name.toLowerCase();
-    if (!/^\w+$/.test(lowered)) {
-      throw new Error('Invalid purl: contains an illegal character.');
-    }
-    this.name = lowered;
-  }
-
-  toString() {
-    const { type } = this;
-    if (type === 'pypi') {
-      this._handlePyPi();
-    } else if (type === 'pub') {
-      this._handlePub();
-    }
-    const { namespace, name, version, qualifiers, subpath } = this;
-    let purl = `pkg:${encodeURIComponent(type)}/`;
-
-    if (namespace) {
-      purl = `${purl}${encodeWithColonAndForwardSlash(namespace)}/`;
+    toString() {
+        const { namespace, name, version, qualifiers, subpath, type } = this
+        let purlStr = `pkg:${Component.type.encode(type)}/`
+        if (namespace) {
+            purlStr = `${purlStr}${Component.namespace.encode(namespace)}/`
+        }
+        purlStr = `${purlStr}${Component.name.encode(name)}`
+        if (version) {
+            purlStr = `${purlStr}@${Component.version.encode(version)}`
+        }
+        if (qualifiers) {
+            purlStr = `${purlStr}?${Component.qualifiers.encode(qualifiers)}`
+        }
+        if (subpath) {
+            purlStr = `${purlStr}#${Component.subpath.encode(subpath)}`
+        }
+        return purlStr
     }
 
-    purl = `${purl}${encodeWithColon(name)}`
+    static fromString(purlStr) {
+        // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#how-to-parse-a-purl-string-in-its-components
+        if (typeof purlStr !== 'string' || isBlank(purlStr)) {
+            throw new Error('A purl string argument is required.')
+        }
 
-    if (version) {
-      purl = `${purl}@${encodeWithColonAndPlusSign(version)}`;
+        // Split the remainder once from left on ':'.
+        const colonIndex = purlStr.indexOf(':')
+        // Use WHATWG URL to split up the purl string.
+        //   - Split the purl string once from right on '#'
+        //   - Split the remainder once from right on '?'
+        //   - Split the remainder once from left on ':'
+        let url
+        try {
+            url = new URL(
+                colonIndex === -1
+                    ? purlStr
+                    : // Since a purl never contains a URL Authority, its scheme
+                      // must not be suffixed with double slash as in 'pkg://'
+                      // and should use instead 'pkg:'. Purl parsers must accept
+                      // URLs such as 'pkg://' and must ignore the '//'
+                      `pkg:${trimLeadingSlashes(purlStr.slice(colonIndex + 1))}`
+            )
+        } catch {
+            throw new Error('Invalid purl: failed to parse as URL')
+        }
+
+        // The scheme is a constant with the value "pkg".
+        if (url.protocol !== 'pkg:') {
+            throw new Error(
+                'purl is missing the required "pkg" scheme component.'
+            )
+        }
+
+        // A purl must NOT contain a URL Authority i.e. there is no support for
+        // username, password, host and port components.
+        if (url.username !== '' || url.password !== '') {
+            throw new Error(
+                'Invalid purl: cannot contain a "user:pass@host:port"'
+            )
+        }
+
+        const { pathname } = url
+        const firstSlashIndex = pathname.indexOf('/')
+        if (firstSlashIndex < 1) {
+            throw new Error('Invalid purl: missing required "type" component')
+        }
+        const rawType = pathname.slice(0, firstSlashIndex)
+
+        let rawVersion
+        let atSignIndex = pathname.lastIndexOf('@')
+        // Handle unencoded leading '@' characters. This is a small break from
+        // the specification to make parsing more forgiving so that users don't
+        // have to deal with it.
+        if (
+            atSignIndex !== -1 &&
+            pathname.charCodeAt(atSignIndex - 1) === 47 /*'/'*/
+        ) {
+            atSignIndex = -1
+        }
+        const beforeVersion = pathname.slice(
+            rawType.length + 1,
+            atSignIndex === -1 ? pathname.length : atSignIndex
+        )
+        if (atSignIndex !== -1) {
+            // Split the remainder once from right on '@'.
+            rawVersion = pathname.slice(atSignIndex + 1)
+        }
+
+        let rawNamespace
+        let rawName
+        const lastSlashIndex = beforeVersion.lastIndexOf('/')
+        if (lastSlashIndex === -1) {
+            // Split the remainder once from right on '/'.
+            rawName = beforeVersion
+        } else {
+            // Split the remainder once from right on '/'.
+            rawName = beforeVersion.slice(lastSlashIndex + 1)
+            // Split the remainder on '/'.
+            rawNamespace = beforeVersion.slice(0, lastSlashIndex)
+        }
+
+        let rawQualifiers
+        const { searchParams } = url
+        if (searchParams.size !== 0) {
+            // Split the remainder once from right on '?'.
+            rawQualifiers = searchParams
+        }
+
+        let rawSubpath
+        const { hash } = url
+        if (hash.length !== 0) {
+            // Split the purl string once from right on '#'.
+            rawSubpath = hash.slice(1)
+        }
+
+        return new PackageURL(
+            rawType,
+            rawNamespace,
+            rawName,
+            rawVersion,
+            rawQualifiers,
+            rawSubpath
+        )
     }
+}
 
-    if (qualifiers) {
-      let qstr = '';
-      const qualifiersKeys =  Object.keys(qualifiers).sort();
-      for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
-        const key = qualifiersKeys[i];
-        qstr = `${qstr}${qstr.length ? '&' : ''}${encodeWithColon(key)}=${encodeWithForwardSlash(qualifiers[key])}`
-      }
-      purl = `${purl}?${qstr}`;
-    }
+for (const staticProp of ['Component', 'KnownQualifierNames', 'Type']) {
+    Reflect.defineProperty(PackageURL, staticProp, {
+        ...Reflect.getOwnPropertyDescriptor(PackageURL, staticProp),
+        writable: false
+    })
+}
 
-    if (subpath) {
-      purl = `${purl}#${encodeWithColonAndForwardSlash(subpath)}`
-    }
+Reflect.setPrototypeOf(PackageURL.prototype, null)
 
-    return purl
-  }
-
-  static fromString(purl) {
-    if (typeof purl !== 'string' || purl.length === 0 || purl.trim().length === 0) {
-      throw new Error('A purl non-empty string argument is required.');
-    }
-    const scheme = purl.slice(0, purl.indexOf(':'));
-    if (scheme !== 'pkg') {
-      throw new Error('purl is missing the required "pkg" scheme component.');
-    }
-
-    let remainder = purl.slice(purl.indexOf(':') + 1);
-    // this strip '/, // and /// as possible in :// or :///
-    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    remainder = remainder.trim().replace(/^\/+/g, '');
-
-    let type
-    ({ 0: type, 1: remainder } = remainder.split('/', 2));
-    if (!type || !remainder) {
-      throw new Error('purl is missing the required "type" component.');
-    }
-    type = decodeURIComponent(type);
-
-    const url = new URL(purl);
-
-    const { searchParams } = url;
-    let qualifiers = undefined;
-    if (searchParams.size) {
-      qualifiers = {};
-      for (const { 0: key, 1: value } of searchParams) {
-        qualifiers[key] = value;
-      }
-    }
-
-    let { hash: subpath } = url;
-    if (subpath.indexOf('#') === 0) {
-      subpath = subpath.slice(1);
-    }
-    subpath = subpath.length === 0
-      ? undefined
-      : decodeURIComponent(subpath);
-
-    if (url.username !== '' || url.password !== '') {
-      throw new Error('Invalid purl: cannot contain a "user:pass@host:port"');
-    }
-
-    // this strip '/, // and /// as possible in :// or :///
-    // from https://gist.github.com/refo/47632c8a547f2d9b6517#file-remove-leading-slash
-    const path = url.pathname.trim().replace(/^\/+/g, '');
-
-    // version is optional - check for existence
-    let version = undefined;
-    const atSignIndex = path.indexOf('@');
-    if (atSignIndex !== -1) {
-      const rawVersion = path.slice(atSignIndex + 1);
-      version = decodeURIComponent(rawVersion);
-
-      // Convert percent-encoded colons (:) back, to stay in line with the `toString`
-      // implementation of this library.
-      // https://github.com/package-url/packageurl-js/blob/58026c86978c6e356e5e07f29ecfdccbf8829918/src/package-url.js#L98C10-L98C10
-      const versionEncoded = encodeWithColonAndPlusSign(version);
-
-      if (rawVersion !== versionEncoded) {
-        throw new Error('Invalid purl: version must be percent-encoded');
-      }
-
-      remainder = path.slice(0, atSignIndex);
-    } else {
-      remainder = path;
-    }
-
-    // The 'remainder' should now consist of an optional namespace and the name
-    const remaining = remainder.split('/').slice(1);
-    let name = '';
-    let namespace = undefined;
-    if (remaining.length > 1) {
-      const nameIndex = remaining.length - 1;
-      const namespaceComponents = remaining.slice(0, nameIndex);
-      name = decodeURIComponent(remaining[nameIndex]);
-      namespace = decodeURIComponent(namespaceComponents.join('/'));
-    } else if (remaining.length === 1) {
-      name = decodeURIComponent(remaining[0]);
-    }
-
-    if (name === '') {
-      throw new Error('purl is missing the required "name" component.');
-    }
-
-    return new PackageURL(type, namespace, name, version, qualifiers, subpath);
-  }
-
-};
-
-module.exports = PackageURL;
+module.exports = {
+    PackageURL,
+    PurlComponent: Component,
+    PurlQualifierNames: KnownQualifierNames,
+    PurlType: Type
+}

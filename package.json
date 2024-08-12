@@ -18,9 +18,17 @@
     "url": "git+https://github.com/package-url/packageurl-js.git"
   },
   "scripts": {
-    "test": "mocha"
+    "test": "mocha",
+    "prettify": "prettier --write ./**/*.js"
   },
   "devDependencies": {
-    "mocha": "^10.2.0"
-  }
+    "mocha": "^10.4.0",
+    "prettier": "^3.2.5"
+  },
+  "files": [
+    "*{.js,.ts}",
+    "src/**/*{.js,.ts}",
+    "LICENSE",
+    "README.md"
+  ]
 }
