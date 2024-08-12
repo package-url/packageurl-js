@@ -168,19 +168,6 @@ declare module "packageurl-js" {
      * @param purlStr string to parse
      */
     static fromString(purlStr: string): PackageURL
-
-    /**
-     * Parses a purl string a PackageURL arguments array.
-     * @param purlStr string to parse
-     */
-    static parseString(purlStr: string): [
-      type: string,
-      namespace: string | undefined,
-      name: string,
-      version: string | undefined,
-      qualifiers: PurlQualifiers | undefined,
-      subpath: string | undefined
-    ]
   }
 
   export const PurlComponent = <PurlComponent>{}

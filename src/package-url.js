@@ -61,8 +61,12 @@ const Component = createHelpersNamespaceObject(
         },
         validate: {
             type: validateType,
+            namespace: validateNamespace,
+            name: validateName,
+            version: validateVersion,
             qualifierKey: validateQualifierKey,
-            qualifiers: validateQualifiers
+            qualifiers: validateQualifiers,
+            subpath: validateSubpath
         }
     },
     {
@@ -453,12 +457,20 @@ function isBlank(str) {
     return true
 }
 
+function isNonEmptyString(value) {
+    return typeof value === 'string' && value.length > 0
+}
+
 function isNullishOrEmptyString(value) {
     return (
         value === null ||
         value === undefined ||
         (typeof value === 'string' && value.length === 0)
     )
+}
+
+function isObject(value) {
+    return value !== null && typeof value === 'object'
 }
 
 function lowerName(purl) {
@@ -480,7 +492,9 @@ function lowerVersion(purl) {
 }
 
 function normalizeName(rawName) {
-    return decodeURIComponent(rawName)
+    return typeof rawName === 'string'
+        ? decodeURIComponent(rawName).trim()
+        : undefined
 }
 
 function normalizeNamespace(rawNamespace) {
@@ -679,39 +693,15 @@ function validateEmptyByType(type, name, value, throws) {
     return true
 }
 
-function validateRequired(name, value, throws) {
-    if (isNullishOrEmptyString(value)) {
-        if (throws) {
-            throw new Error(`Invalid purl: "${name}" is a required field.`)
-        }
-        return false
-    }
-    return true
+function validateName(name, throws) {
+    return (
+        validateRequired('name', name, throws) &&
+        validateStrings('name', name, throws)
+    )
 }
 
-function validateRequiredByType(type, name, value, throws) {
-    if (isNullishOrEmptyString(value)) {
-        if (throws) {
-            throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
-        }
-        return false
-    }
-    return true
-}
-
-function validateStartsWithoutNumber(name, value, throws) {
-    if (value.length !== 0) {
-        const code = value.charCodeAt(0)
-        if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
-            if (throws) {
-                throw new Error(
-                    `Invalid purl: ${name} "${value}" cannot start with a number.`
-                )
-            }
-            return false
-        }
-    }
-    return true
+function validateNamespace(namespace, throws) {
+    return validateStrings('namespace', namespace, throws)
 }
 
 function validateQualifiers(qualifiers, throws) {
@@ -772,6 +762,41 @@ function validateQualifierKey(key, throws) {
     return true
 }
 
+function validateRequired(name, value, throws) {
+    if (isNullishOrEmptyString(value)) {
+        if (throws) {
+            throw new Error(`Invalid purl: "${name}" is a required field.`)
+        }
+        return false
+    }
+    return true
+}
+
+function validateRequiredByType(type, name, value, throws) {
+    if (isNullishOrEmptyString(value)) {
+        if (throws) {
+            throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
+        }
+        return false
+    }
+    return true
+}
+
+function validateStartsWithoutNumber(name, value, throws) {
+    if (value.length !== 0) {
+        const code = value.charCodeAt(0)
+        if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
+            if (throws) {
+                throw new Error(
+                    `Invalid purl: ${name} "${value}" cannot start with a number.`
+                )
+            }
+            return false
+        }
+    }
+    return true
+}
+
 function validateStrings(name, value, throws) {
     if (value === null || value === undefined || typeof value === 'string') {
         return true
@@ -782,9 +807,17 @@ function validateStrings(name, value, throws) {
     return false
 }
 
+function validateSubpath(subpath, throws) {
+    return validateStrings('subpath', subpath, throws)
+}
+
 function validateType(type, throws) {
-    // The type cannot start with a number.
-    if (!validateStartsWithoutNumber('type', type, throws)) {
+    // The type cannot be nullish, an empty string, or start with a number.
+    if (
+        !validateRequired('type', type, throws) ||
+        !validateStrings('type', type, throws) ||
+        !validateStartsWithoutNumber('type', type, throws)
+    ) {
         return false
     }
     // The package type is composed only of ASCII letters and numbers,
@@ -815,6 +848,10 @@ function validateType(type, throws) {
     return true
 }
 
+function validateVersion(version, throws) {
+    return validateStrings('version', version, throws)
+}
+
 class PackageURL {
     static Component = recursiveFreeze(Component)
     static KnownQualifierNames = recursiveFreeze(KnownQualifierNames)
@@ -828,25 +865,42 @@ class PackageURL {
         rawQualifiers,
         rawSubpath
     ) {
-        validateRequired('type', rawType, true)
-        validateRequired('name', rawName, true)
-
-        validateStrings('type', rawType, true)
-        validateStrings('name', rawName, true)
-        validateStrings('namespace', rawNamespace, true)
-        validateStrings('version', rawVersion, true)
-        validateStrings('subpath', rawSubpath, true)
-
-        const type = Component.type.normalize(rawType)
+        const type = isNonEmptyString(rawType)
+            ? Component.type.normalize(rawType)
+            : rawType
         Component.type.validate(type, true)
-        Component.qualifiers.validate(rawQualifiers, true)
+
+        const namespace = isNonEmptyString(rawNamespace)
+            ? Component.namespace.normalize(rawNamespace)
+            : rawNamespace
+        Component.namespace.validate(namespace, true)
+
+        const name = isNonEmptyString(rawName)
+            ? Component.name.normalize(rawName)
+            : rawName
+        Component.name.validate(name, true)
+
+        const version = isNonEmptyString(rawVersion)
+            ? Component.version.normalize(rawVersion)
+            : rawVersion
+        Component.version.validate(version, true)
+
+        const qualifiers = isObject(rawQualifiers)
+            ? Component.qualifiers.normalize(rawQualifiers)
+            : rawQualifiers
+        Component.qualifiers.validate(qualifiers, true)
+
+        const subpath = isNonEmptyString(rawSubpath)
+            ? Component.subpath.normalize(rawSubpath)
+            : rawSubpath
+        Component.subpath.validate(subpath, true)
 
         this.type = type
-        this.name = Component.name.normalize(rawName)
-        this.namespace = Component.namespace.normalize(rawNamespace)
-        this.version = Component.version.normalize(rawVersion)
-        this.qualifiers = Component.qualifiers.normalize(rawQualifiers)
-        this.subpath = Component.subpath.normalize(rawSubpath)
+        this.name = name
+        this.namespace = namespace ?? undefined
+        this.version = version ?? undefined
+        this.qualifiers = qualifiers ?? undefined
+        this.subpath = subpath ?? undefined
 
         const typeHelpers = Type[type]
         if (typeHelpers) {
@@ -875,44 +929,39 @@ class PackageURL {
     }
 
     static fromString(purlStr) {
-        return new PackageURL(...PackageURL.parseString(purlStr))
-    }
-
-    static parseString(purlStr) {
         // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#how-to-parse-a-purl-string-in-its-components
         if (typeof purlStr !== 'string' || isBlank(purlStr)) {
-            throw new Error('A purl non-empty string argument is required.')
+            throw new Error('A purl string argument is required.')
         }
 
         // Split the remainder once from left on ':'.
         const colonIndex = purlStr.indexOf(':')
-        // The left side lowercased is the scheme.
-        const scheme =
-            colonIndex === -1 ? '' : purlStr.slice(0, colonIndex).toLowerCase()
-        // The scheme is a constant with the value "pkg"
-        if (scheme !== 'pkg') {
+        // Use WHATWG URL to split up the purl string.
+        //   - Split the purl string once from right on '#'
+        //   - Split the remainder once from right on '?'
+        //   - Split the remainder once from left on ':'
+        let url
+        try {
+            url = new URL(
+                colonIndex === -1
+                    ? purlStr
+                    : // Since a purl never contains a URL Authority, its scheme
+                      // must not be suffixed with double slash as in 'pkg://'
+                      // and should use instead 'pkg:'. Purl parsers must accept
+                      // URLs such as 'pkg://' and must ignore the '//'
+                      `pkg:${trimLeadingSlashes(purlStr.slice(colonIndex + 1))}`
+            )
+        } catch {
+            throw new Error('Invalid purl: failed to parse as URL')
+        }
+
+        // The scheme is a constant with the value "pkg".
+        if (url.protocol !== 'pkg:') {
             throw new Error(
                 'purl is missing the required "pkg" scheme component.'
             )
         }
 
-        // Since a purl never contains a URL Authority, its scheme must not be
-        // suffixed with double slash as in 'pkg://' and should use instead 'pkg:'.
-        //   - purl parsers must accept URLs such as 'pkg://' and must ignore the '//'.
-        //   - The scheme is followed by a ':' separator.
-        const afterProtocol = trimLeadingSlashes(purlStr.slice(colonIndex + 1))
-        const firstSlashIndex = afterProtocol.indexOf('/')
-        if (firstSlashIndex < 1) {
-            throw new Error('purl is missing the required "type" component.')
-        }
-
-        // Use WHATGW URL to split up the purl string.
-        let url
-        try {
-            url = new URL(`pkg:${afterProtocol}`)
-        } catch {
-            throw new Error('Invalid purl: failed to parse as URL')
-        }
         // A purl must NOT contain a URL Authority i.e. there is no support for
         // username, password, host and port components.
         if (url.username !== '' || url.password !== '') {
@@ -922,50 +971,67 @@ class PackageURL {
         }
 
         const { pathname } = url
+        const firstSlashIndex = pathname.indexOf('/')
+        if (firstSlashIndex < 1) {
+            throw new Error('Invalid purl: missing required "type" component')
+        }
+        const rawType = pathname.slice(0, firstSlashIndex)
 
-        const type = afterProtocol.slice(0, firstSlashIndex)
-
-        let name = ''
-        let namespace
-        const atSignIndex = pathname.lastIndexOf('@')
+        let rawVersion
+        let atSignIndex = pathname.lastIndexOf('@')
+        // Handle unencoded leading '@' characters. This is a small break from
+        // the specification to make parsing more forgiving so that users don't
+        // have to deal with it.
+        if (
+            atSignIndex !== -1 &&
+            pathname.charCodeAt(atSignIndex - 1) === 47 /*'/'*/
+        ) {
+            atSignIndex = -1
+        }
         const beforeVersion = pathname.slice(
-            type.length + 1,
+            rawType.length + 1,
             atSignIndex === -1 ? pathname.length : atSignIndex
         )
-        // Split the remainder once from right on '/'.
-        const lastSlashIndex = beforeVersion.lastIndexOf('/')
-        if (lastSlashIndex === -1) {
-            name = beforeVersion
-        } else {
-            name = beforeVersion.slice(lastSlashIndex + 1)
-            // Split the remainder on '/'.
-            namespace = beforeVersion.slice(0, lastSlashIndex)
-        }
-        if (name === '') {
-            throw new Error('purl is missing the required "name" component.')
-        }
-
-        let version
         if (atSignIndex !== -1) {
             // Split the remainder once from right on '@'.
-            version = pathname.slice(atSignIndex + 1)
+            rawVersion = pathname.slice(atSignIndex + 1)
         }
 
-        let qualifiers
+        let rawNamespace
+        let rawName
+        const lastSlashIndex = beforeVersion.lastIndexOf('/')
+        if (lastSlashIndex === -1) {
+            // Split the remainder once from right on '/'.
+            rawName = beforeVersion
+        } else {
+            // Split the remainder once from right on '/'.
+            rawName = beforeVersion.slice(lastSlashIndex + 1)
+            // Split the remainder on '/'.
+            rawNamespace = beforeVersion.slice(0, lastSlashIndex)
+        }
+
+        let rawQualifiers
         const { searchParams } = url
         if (searchParams.size !== 0) {
             // Split the remainder once from right on '?'.
-            qualifiers = searchParams
+            rawQualifiers = searchParams
         }
 
-        let subpath
+        let rawSubpath
         const { hash } = url
         if (hash.length !== 0) {
             // Split the purl string once from right on '#'.
-            subpath = hash.slice(1)
+            rawSubpath = hash.slice(1)
         }
 
-        return [type, namespace, name, version, qualifiers, subpath]
+        return new PackageURL(
+            rawType,
+            rawNamespace,
+            rawName,
+            rawVersion,
+            rawQualifiers,
+            rawSubpath
+        )
     }
 }
 
