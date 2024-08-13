@@ -60,18 +60,23 @@ function normalizeQualifiers(rawQualifiers) {
     ) {
         return undefined
     }
-    const qualifiers = { __proto__: null }
     const entriesIterator =
         // URL searchParams have an "entries" method that returns an iterator.
         typeof rawQualifiers.entries === 'function'
             ? rawQualifiers.entries()
             : Object.entries(rawQualifiers)
+    let qualifiers
     for (const { 0: key, 1: value } of entriesIterator) {
         const strValue = typeof value === 'string' ? value : String(value)
         const trimmed = strValue.trim()
         // Value cannot be an empty string: a key=value pair with an empty value
         // is the same as no key/value at all for this key.
-        if (trimmed.length === 0) continue
+        if (trimmed.length === 0) {
+            continue
+        }
+        if (qualifiers === undefined) {
+            qualifiers = { __proto__: null }
+        }
         // A key is case insensitive. The canonical form is lowercase.
         qualifiers[key.toLowerCase()] = trimmed
     }
