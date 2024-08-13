@@ -2,7 +2,6 @@ const assert = require('assert')
 
 const TEST_FILE = require('./data/test-suite-data.json')
 
-/** @type {import('../src/package-url')} */
 const { PackageURL } = require('../src/package-url')
 
 describe('PackageURL', () => {
