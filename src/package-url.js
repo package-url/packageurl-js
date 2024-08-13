@@ -21,12 +21,51 @@ SOFTWARE.
 */
 'use strict'
 
-const LOOP_SENTINEL = 1_000_000
+const {
+    encodeNamespace,
+    encodeVersion,
+    encodeQualifiers,
+    encodeQualifierValue,
+    encodeSubpath,
+    encodeURIComponent
+} = require('./encode')
 
-// This regexp is valid as of 2024-08-01.
-// https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
-const regexSemverNumberedGroups =
-    /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/
+const { isNullishOrEmptyString } = require('./lang')
+
+const {
+    normalizeName,
+    normalizeNamespace,
+    normalizeQualifiers,
+    normalizeSubpath,
+    normalizeType,
+    normalizeVersion
+} = require('./normalize')
+
+const { isObject, recursiveFreeze } = require('./objects')
+
+const {
+    isBlank,
+    isNonEmptyString,
+    isSemverString,
+    lowerName,
+    lowerNamespace,
+    lowerVersion,
+    replaceDashesWithUnderscores,
+    replaceUnderscoresWithDashes,
+    trimLeadingSlashes
+} = require('./strings')
+
+const {
+    validateEmptyByType,
+    validateName,
+    validateNamespace,
+    validateQualifiers,
+    validateQualifierKey,
+    validateRequiredByType,
+    validateSubpath,
+    validateType,
+    validateVersion
+} = require('./validate')
 
 const PurlComponentEncoder = (comp) =>
     typeof comp === 'string' && comp.length ? encodeURIComponent(comp) : ''
@@ -251,7 +290,7 @@ const Type = createHelpersNamespaceObject(
                 if (
                     length &&
                     version.charCodeAt(0) === 118 /*'v'*/ &&
-                    !regexSemverNumberedGroups.test(version.slice(1))
+                    !isSemverString(version.slice(1))
                 ) {
                     if (throws) {
                         throw new Error(
@@ -363,493 +402,6 @@ function createHelpersNamespaceObject(helpers, defaults = {}) {
         nsObject[propName] = helpersForProp
     }
     return nsObject
-}
-
-function encodeWithColonAndForwardSlash(str) {
-    return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2F/g, '/')
-}
-
-function encodeWithColonAndPlusSign(str) {
-    return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2B/g, '+')
-}
-
-function encodeWithForwardSlash(str) {
-    return encodeURIComponent(str).replace(/%2F/g, '/')
-}
-
-function encodeNamespace(namespace) {
-    return typeof namespace === 'string' && namespace.length
-        ? encodeWithColonAndForwardSlash(namespace)
-        : ''
-}
-
-function encodeVersion(version) {
-    return typeof version === 'string' && version.length
-        ? encodeWithColonAndPlusSign(version)
-        : ''
-}
-
-function encodeQualifiers(qualifiers) {
-    let query = ''
-    if (qualifiers !== null && typeof qualifiers === 'object') {
-        // Sort this list of qualifier strings lexicographically.
-        const qualifiersKeys = Object.keys(qualifiers).sort()
-        for (let i = 0, { length } = qualifiersKeys; i < length; i += 1) {
-            const key = qualifiersKeys[i]
-            query = `${query}${i === 0 ? '' : '&'}${key}=${encodeQualifierValue(qualifiers[key])}`
-        }
-    }
-    return query
-}
-
-function encodeQualifierValue(qualifierValue) {
-    return typeof qualifierValue === 'string' && qualifierValue.length
-        ? encodeWithColonAndForwardSlash(qualifierValue)
-        : ''
-}
-
-function encodeSubpath(subpath) {
-    return typeof subpath === 'string' && subpath.length
-        ? encodeWithForwardSlash(subpath)
-        : ''
-}
-
-function isBlank(str) {
-    for (let i = 0, { length } = str; i < length; i += 1) {
-        const code = str.charCodeAt(i)
-        // prettier-ignore
-        if (
-            !(
-                // Whitespace characters according to ECMAScript spec:
-                // https://tc39.es/ecma262/#sec-white-space
-                (
-                    code === 0x0020 || // Space
-                    code === 0x0009 || // Tab
-                    code === 0x000a || // Line Feed
-                    code === 0x000b || // Vertical Tab
-                    code === 0x000c || // Form Feed
-                    code === 0x000d || // Carriage Return
-                    code === 0x00a0 || // No-Break Space
-                    code === 0x1680 || // Ogham Space Mark
-                    code === 0x2000 || // En Quad
-                    code === 0x2001 || // Em Quad
-                    code === 0x2002 || // En Space
-                    code === 0x2003 || // Em Space
-                    code === 0x2004 || // Three-Per-Em Space
-                    code === 0x2005 || // Four-Per-Em Space
-                    code === 0x2006 || // Six-Per-Em Space
-                    code === 0x2007 || // Figure Space
-                    code === 0x2008 || // Punctuation Space
-                    code === 0x2009 || // Thin Space
-                    code === 0x200a || // Hair Space
-                    code === 0x2028 || // Line Separator
-                    code === 0x2029 || // Paragraph Separator
-                    code === 0x202f || // Narrow No-Break Space
-                    code === 0x205f || // Medium Mathematical Space
-                    code === 0x3000 || // Ideographic Space
-                    code === 0xfeff    // Byte Order Mark
-                )
-            )
-        ) {
-            return false
-        }
-    }
-    return true
-}
-
-function isNonEmptyString(value) {
-    return typeof value === 'string' && value.length > 0
-}
-
-function isNullishOrEmptyString(value) {
-    return (
-        value === null ||
-        value === undefined ||
-        (typeof value === 'string' && value.length === 0)
-    )
-}
-
-function isObject(value) {
-    return value !== null && typeof value === 'object'
-}
-
-function lowerName(purl) {
-    purl.name = purl.name.toLowerCase()
-}
-
-function lowerNamespace(purl) {
-    const { namespace } = purl
-    if (typeof namespace === 'string') {
-        purl.namespace = namespace.toLowerCase()
-    }
-}
-
-function lowerVersion(purl) {
-    const { version } = purl
-    if (typeof version === 'string') {
-        purl.version = version.toLowerCase()
-    }
-}
-
-function normalizeName(rawName) {
-    return typeof rawName === 'string'
-        ? decodeURIComponent(rawName).trim()
-        : undefined
-}
-
-function normalizeNamespace(rawNamespace) {
-    return typeof rawNamespace === 'string'
-        ? normalizePath(decodeURIComponent(rawNamespace))
-        : undefined
-}
-
-function normalizePath(pathname, callback) {
-    let collapsed = ''
-    let start = 0
-    // Leading and trailing slashes, i.e. '/', are not significant and should be
-    // stripped in the canonical form.
-    while (pathname.charCodeAt(start) === 47 /*'/'*/) {
-        start += 1
-    }
-    let nextIndex = pathname.indexOf('/', start)
-    if (nextIndex === -1) {
-        return pathname.slice(start)
-    }
-    // Discard any empty string segments by collapsing repeated segment
-    // separator slashes, i.e. '/'.
-    while (nextIndex !== -1) {
-        const segment = pathname.slice(start, nextIndex)
-        if (callback === undefined || callback(segment)) {
-            collapsed =
-                collapsed + (collapsed.length === 0 ? '' : '/') + segment
-        }
-        start = nextIndex + 1
-        while (pathname.charCodeAt(start) === 47) {
-            start += 1
-        }
-        nextIndex = pathname.indexOf('/', start)
-    }
-    const lastSegment = pathname.slice(start)
-    if (
-        lastSegment.length !== 0 &&
-        (callback === undefined || callback(lastSegment))
-    ) {
-        collapsed = collapsed + '/' + lastSegment
-    }
-    return collapsed
-}
-
-function normalizeQualifiers(rawQualifiers) {
-    if (
-        rawQualifiers === null ||
-        rawQualifiers === undefined ||
-        typeof rawQualifiers !== 'object'
-    ) {
-        return undefined
-    }
-    const qualifiers = { __proto__: null }
-    const entriesIterator =
-        // URL searchParams have an "entries" method that returns an iterator.
-        typeof rawQualifiers.entries === 'function'
-            ? rawQualifiers.entries()
-            : Object.entries(rawQualifiers)
-    for (const { 0: key, 1: value } of entriesIterator) {
-        const strValue = typeof value === 'string' ? value : String(value)
-        const trimmed = strValue.trim()
-        // Value cannot be an empty string: a key=value pair with an empty value
-        // is the same as no key/value at all for this key.
-        if (trimmed.length === 0) continue
-        // A key is case insensitive. The canonical form is lowercase.
-        qualifiers[key.toLowerCase()] = trimmed
-    }
-    return qualifiers
-}
-
-function normalizeSubpath(rawSubpath) {
-    return typeof rawSubpath === 'string'
-        ? normalizePath(decodeURIComponent(rawSubpath), subpathFilter)
-        : undefined
-}
-
-function normalizeType(rawType) {
-    // The type must NOT be percent-encoded.
-    // The type is case insensitive. The canonical form is lowercase.
-    return typeof rawType === 'string'
-        ? decodeURIComponent(rawType).trim().toLowerCase()
-        : undefined
-}
-
-function normalizeVersion(rawVersion) {
-    return typeof rawVersion === 'string'
-        ? decodeURIComponent(rawVersion).trim()
-        : undefined
-}
-
-function recursiveFreeze(value_) {
-    if (
-        value_ === null ||
-        !(typeof value_ === 'object' || typeof value_ === 'function') ||
-        Object.isFrozen(value_)
-    ) {
-        return value_
-    }
-    const queue = [value_]
-    let { length: queueLength } = queue
-    let pos = 0
-    while (pos < queueLength) {
-        if (pos === LOOP_SENTINEL) {
-            throw new Error(
-                'Detected infinite loop in object crawl of recursiveFreeze'
-            )
-        }
-        const obj = queue[pos++]
-        Object.freeze(obj)
-        if (Array.isArray(obj)) {
-            for (let i = 0, { length } = obj; i < length; i += 1) {
-                const item = obj[i]
-                if (
-                    item !== null &&
-                    (typeof item === 'object' || typeof item === 'function') &&
-                    !Object.isFrozen(item)
-                ) {
-                    queue[queueLength++] = item
-                }
-            }
-        } else {
-            const keys = Reflect.ownKeys(obj)
-            for (let i = 0, { length } = keys; i < length; i += 1) {
-                const propValue = obj[keys[i]]
-                if (
-                    propValue !== null &&
-                    (typeof propValue === 'object' ||
-                        typeof propValue === 'function') &&
-                    !Object.isFrozen(propValue)
-                ) {
-                    queue[queueLength++] = propValue
-                }
-            }
-        }
-    }
-    return value_
-}
-
-function replaceDashesWithUnderscores(str) {
-    // Replace all "-" with "_"
-    let result = ''
-    let fromIndex = 0
-    let index = 0
-    while ((index = str.indexOf('-', fromIndex)) !== -1) {
-        result = result + str.slice(fromIndex, index) + '_'
-        fromIndex = index + 1
-    }
-    return fromIndex ? result + str.slice(fromIndex) : str
-}
-
-function replaceUnderscoresWithDashes(str) {
-    // Replace all "_" with "-"
-    let result = ''
-    let fromIndex = 0
-    let index = 0
-    while ((index = str.indexOf('_', fromIndex)) !== -1) {
-        result = result + str.slice(fromIndex, index) + '-'
-        fromIndex = index + 1
-    }
-    return fromIndex ? result + str.slice(fromIndex) : str
-}
-
-function subpathFilter(segment) {
-    // When percent-decoded, a segment
-    //   - must not be any of '.' or '..'
-    //   - must not be empty
-    const { length } = segment
-    if (length === 1 && segment.charCodeAt(0) === 46 /*'.'*/) return false
-    if (
-        length === 2 &&
-        segment.charCodeAt(0) === 46 &&
-        segment.charCodeAt(1) === 46
-    ) {
-        return false
-    }
-    return !isBlank(segment)
-}
-
-function trimLeadingSlashes(str) {
-    let start = 0
-    while (str.charCodeAt(start) === 47 /*'/'*/) {
-        start += 1
-    }
-    return start === 0 ? str : str.slice(start)
-}
-
-function validateEmptyByType(type, name, value, throws) {
-    if (!isNullishOrEmptyString(value)) {
-        if (throws) {
-            throw new Error(
-                `Invalid purl: ${type} "${name}" field must be empty.`
-            )
-        }
-        return false
-    }
-    return true
-}
-
-function validateName(name, throws) {
-    return (
-        validateRequired('name', name, throws) &&
-        validateStrings('name', name, throws)
-    )
-}
-
-function validateNamespace(namespace, throws) {
-    return validateStrings('namespace', namespace, throws)
-}
-
-function validateQualifiers(qualifiers, throws) {
-    if (qualifiers === null || qualifiers === undefined) {
-        return true
-    }
-    if (typeof qualifiers !== 'object') {
-        if (throws) {
-            throw new Error(
-                'Invalid purl: "qualifiers" argument must be an object.'
-            )
-        }
-        return false
-    }
-    const keysIterable =
-        // URL searchParams have an "keys" method that returns an iterator.
-        typeof qualifiers.keys === 'function'
-            ? qualifiers.keys()
-            : Object.keys(qualifiers)
-    for (const key of keysIterable) {
-        if (!validateQualifierKey(key, throws)) {
-            return false
-        }
-    }
-    return true
-}
-
-function validateQualifierKey(key, throws) {
-    // A key cannot start with a number.
-    if (!validateStartsWithoutNumber('qualifier', key, throws)) {
-        return false
-    }
-    // The key must be composed only of ASCII letters and numbers,
-    // '.', '-' and '_' (period, dash and underscore).
-    for (let i = 0, { length } = key; i < length; i += 1) {
-        const code = key.charCodeAt(i)
-        // prettier-ignore
-        if (
-            !(
-                (
-                    (code >= 48 && code <= 57)  || // 0-9
-                    (code >= 65 && code <= 90)  || // A-Z
-                    (code >= 97 && code <= 122) || // a-z
-                    code === 46 || // .
-                    code === 45 || // -
-                    code === 95    // _
-                )
-            )
-        ) {
-            if (throws) {
-                throw new Error(
-                    `Invalid purl: qualifier "${key}" contains an illegal character.`
-                )
-            }
-            return false
-        }
-    }
-    return true
-}
-
-function validateRequired(name, value, throws) {
-    if (isNullishOrEmptyString(value)) {
-        if (throws) {
-            throw new Error(`Invalid purl: "${name}" is a required field.`)
-        }
-        return false
-    }
-    return true
-}
-
-function validateRequiredByType(type, name, value, throws) {
-    if (isNullishOrEmptyString(value)) {
-        if (throws) {
-            throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
-        }
-        return false
-    }
-    return true
-}
-
-function validateStartsWithoutNumber(name, value, throws) {
-    if (value.length !== 0) {
-        const code = value.charCodeAt(0)
-        if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
-            if (throws) {
-                throw new Error(
-                    `Invalid purl: ${name} "${value}" cannot start with a number.`
-                )
-            }
-            return false
-        }
-    }
-    return true
-}
-
-function validateStrings(name, value, throws) {
-    if (value === null || value === undefined || typeof value === 'string') {
-        return true
-    }
-    if (throws) {
-        throw new Error(`Invalid purl: "'${name}" argument must be a string.`)
-    }
-    return false
-}
-
-function validateSubpath(subpath, throws) {
-    return validateStrings('subpath', subpath, throws)
-}
-
-function validateType(type, throws) {
-    // The type cannot be nullish, an empty string, or start with a number.
-    if (
-        !validateRequired('type', type, throws) ||
-        !validateStrings('type', type, throws) ||
-        !validateStartsWithoutNumber('type', type, throws)
-    ) {
-        return false
-    }
-    // The package type is composed only of ASCII letters and numbers,
-    // '.', '+' and '-' (period, plus, and dash)
-    for (let i = 0, { length } = type; i < length; i += 1) {
-        const code = type.charCodeAt(i)
-        // prettier-ignore
-        if (
-            !(
-                (
-                    (code >= 48 && code <= 57)  || // 0-9
-                    (code >= 65 && code <= 90)  || // A-Z
-                    (code >= 97 && code <= 122) || // a-z
-                    code === 46 || // .
-                    code === 43 || // +
-                    code === 45    // -
-                )
-            )
-        ) {
-            if (throws) {
-                throw new Error(
-                    `Invalid purl: type "${type}" contains an illegal character.`
-                )
-            }
-            return false
-        }
-    }
-    return true
-}
-
-function validateVersion(version, throws) {
-    return validateStrings('version', version, throws)
 }
 
 class PackageURL {
