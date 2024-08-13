@@ -481,9 +481,23 @@ class PackageURL {
     }
 
     static fromString(purlStr) {
+        return new PackageURL(...PackageURL.parseString(purlStr))
+    }
+
+    static parseString(purlStr) {
         // https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#how-to-parse-a-purl-string-in-its-components
-        if (typeof purlStr !== 'string' || isBlank(purlStr)) {
+        if (typeof purlStr !== 'string') {
             throw new Error('A purl string argument is required.')
+        }
+        if (isBlank(purlStr)) {
+            return [
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined
+            ]
         }
 
         // Split the remainder once from left on ':'.
@@ -510,7 +524,7 @@ class PackageURL {
         // The scheme is a constant with the value "pkg".
         if (url.protocol !== 'pkg:') {
             throw new Error(
-                'purl is missing the required "pkg" scheme component.'
+                'Invalid purl: missing required "pkg" scheme component'
             )
         }
 
@@ -524,10 +538,20 @@ class PackageURL {
 
         const { pathname } = url
         const firstSlashIndex = pathname.indexOf('/')
+        const rawType =
+            firstSlashIndex === -1
+                ? pathname
+                : pathname.slice(0, firstSlashIndex)
         if (firstSlashIndex < 1) {
-            throw new Error('Invalid purl: missing required "type" component')
+            return [
+                rawType,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined
+            ]
         }
-        const rawType = pathname.slice(0, firstSlashIndex)
 
         let rawVersion
         let atSignIndex = pathname.lastIndexOf('@')
@@ -576,14 +600,14 @@ class PackageURL {
             rawSubpath = hash.slice(1)
         }
 
-        return new PackageURL(
+        return [
             rawType,
             rawNamespace,
             rawName,
             rawVersion,
             rawQualifiers,
             rawSubpath
-        )
+        ]
     }
 }
 

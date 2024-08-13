@@ -120,12 +120,14 @@ declare module "packageurl-js" {
     static Type: PurlType
 
     /**
-     *  The package "type" or package "protocol" such as maven, npm, nuget, gem, pypi, etc. Required.
+     * The package "type" or package "protocol" such as maven, npm, nuget, gem,
+     * pypi, etc. Required.
      */
     type: string
 
     /**
-     * Some name prefix such as a Maven groupid, a Docker image owner, a GitHub user or organization. Optional and type-specific.
+     * Some name prefix such as a Maven groupid, a Docker image owner, a GitHub
+     * user or organization. Optional and type-specific.
      */
     namespace: string | undefined
 
@@ -140,7 +142,8 @@ declare module "packageurl-js" {
     version: string | undefined
 
     /**
-     * Extra qualifying data for a package such as an OS, architecture, a distro, etc. Optional and type-specific.
+     * Extra qualifying data for a package such as an OS, architecture, a distro,
+     * etc. Optional and type-specific.
      */
     qualifiers: PurlQualifiers | undefined
 
@@ -165,9 +168,20 @@ declare module "packageurl-js" {
 
     /**
      * Parses a purl string into a PackageURL instance.
-     * @param purlStr string to parse
      */
     static fromString(purlStr: string): PackageURL
+
+    /**
+     * Parses a purl string into a PackageURL arguments array.
+     */
+    static parseString(purlStr: string): [
+      type: string | undefined,
+      namespace: string | undefined,
+      name: string | undefined,
+      version: string | undefined,
+      qualifiers: PurlQualifiers | undefined,
+      subpath: string | undefined
+    ]
   }
 
   export const PurlComponent = <PurlComponent>{}
