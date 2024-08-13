@@ -1,5 +1,6 @@
 'use strict'
 
+const { isObject } = require('./objects')
 const { isBlank } = require('./strings')
 
 const { decodeURIComponent } = globalThis
@@ -53,24 +54,12 @@ function normalizePath(pathname, callback) {
 }
 
 function normalizeQualifiers(rawQualifiers) {
-    if (
-        rawQualifiers === null ||
-        rawQualifiers === undefined ||
-        typeof rawQualifiers !== 'object'
-    ) {
-        return undefined
-    }
-    const entriesIterator =
-        // URL searchParams have an "entries" method that returns an iterator.
-        typeof rawQualifiers.entries === 'function'
-            ? rawQualifiers.entries()
-            : Object.entries(rawQualifiers)
     let qualifiers
-    for (const { 0: key, 1: value } of entriesIterator) {
+    for (const { 0: key, 1: value } of qualifiersToEntries(rawQualifiers)) {
         const strValue = typeof value === 'string' ? value : String(value)
         const trimmed = strValue.trim()
-        // Value cannot be an empty string: a key=value pair with an empty value
-        // is the same as no key/value at all for this key.
+        // A key=value pair with an empty value is the same as no key/value
+        // at all for this key.
         if (trimmed.length === 0) {
             continue
         }
@@ -101,6 +90,17 @@ function normalizeVersion(rawVersion) {
     return typeof rawVersion === 'string'
         ? decodeURIComponent(rawVersion).trim()
         : undefined
+}
+
+function qualifiersToEntries(rawQualifiers) {
+    if (isObject(rawQualifiers)) {
+        return rawQualifiers instanceof URLSearchParams
+            ? rawQualifiers.entries()
+            : Object.entries(rawQualifiers)
+    }
+    return typeof rawQualifiers === 'string'
+        ? new URLSearchParams(rawQualifiers).entries()
+        : Object.entries({})
 }
 
 function subpathFilter(segment) {

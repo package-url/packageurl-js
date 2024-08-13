@@ -437,9 +437,10 @@ class PackageURL {
             : rawVersion
         Component.version.validate(version, true)
 
-        const qualifiers = isObject(rawQualifiers)
-            ? Component.qualifiers.normalize(rawQualifiers)
-            : rawQualifiers
+        const qualifiers =
+            typeof rawQualifiers === 'string' || isObject(rawQualifiers)
+                ? Component.qualifiers.normalize(rawQualifiers)
+                : rawQualifiers
         Component.qualifiers.validate(qualifiers, true)
 
         const subpath = isNonEmptyString(rawSubpath)

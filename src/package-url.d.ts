@@ -157,7 +157,7 @@ declare module "packageurl-js" {
       namespace: string | undefined | null,
       name: string,
       version?: string | undefined | null,
-      qualifiers?: PurlQualifiers | undefined | null,
+      qualifiers?: PurlQualifiers | string | undefined | null,
       subpath?: string | undefined | null
     )
 
