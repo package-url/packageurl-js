@@ -508,30 +508,39 @@ class PackageURL {
         //   - Split the remainder once from right on '?'
         //   - Split the remainder once from left on ':'
         let url
-        try {
-            url = new URL(
-                colonIndex === -1
-                    ? purlStr
-                    : // Since a purl never contains a URL Authority, its scheme
-                      // must not be suffixed with double slash as in 'pkg://'
-                      // and should use instead 'pkg:'. Purl parsers must accept
-                      // URLs such as 'pkg://' and must ignore the '//'
-                      `pkg:${trimLeadingSlashes(purlStr.slice(colonIndex + 1))}`
-            )
-        } catch {
-            throw new Error('Invalid purl: failed to parse as URL')
+        let maybeUrlWithAuth
+        if (colonIndex !== -1) {
+            try {
+                // Since a purl never contains a URL Authority, its scheme
+                // must not be suffixed with double slash as in 'pkg://'
+                // and should use instead 'pkg:'. Purl parsers must accept
+                // URLs such as 'pkg://' and must ignore the '//'
+                const beforeColon = purlStr.slice(0, colonIndex)
+                const afterColon = purlStr.slice(colonIndex + 1)
+                const trimmedAfterColon = trimLeadingSlashes(afterColon)
+                url = new URL(`${beforeColon}:${trimmedAfterColon}`)
+                maybeUrlWithAuth =
+                    afterColon.length === trimmedAfterColon.length
+                        ? url
+                        : new URL(purlStr)
+            } catch (e) {
+                throw new Error('Invalid purl: failed to parse as URL', {
+                    cause: e
+                })
+            }
         }
-
         // The scheme is a constant with the value "pkg".
-        if (url.protocol !== 'pkg:') {
+        if (url?.protocol !== 'pkg:') {
             throw new Error(
                 'Invalid purl: missing required "pkg" scheme component'
             )
         }
-
         // A purl must NOT contain a URL Authority i.e. there is no support for
         // username, password, host and port components.
-        if (url.username !== '' || url.password !== '') {
+        if (
+            maybeUrlWithAuth.username !== '' ||
+            maybeUrlWithAuth.password !== ''
+        ) {
             throw new Error(
                 'Invalid purl: cannot contain a "user:pass@host:port"'
             )
