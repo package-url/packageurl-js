@@ -1,10 +1,11 @@
 'use strict'
 
-function createHelpersNamespaceObject(helpers, defaults = {}) {
+function createHelpersNamespaceObject(helpers, options_ = {}) {
+    const { comparator, ...defaults } = { __proto__: null, ...options_ }
     const helperNames = Object.keys(helpers).sort()
     const propNames = [
         ...new Set([...Object.values(helpers)].map(Object.keys).flat())
-    ].sort()
+    ].sort(comparator)
     const nsObject = Object.create(null)
     for (let i = 0, { length } = propNames; i < length; i += 1) {
         const propName = propNames[i]

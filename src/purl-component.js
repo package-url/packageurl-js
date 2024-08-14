@@ -9,6 +9,8 @@ const {
     encodeURIComponent
 } = require('./encode')
 
+const { createHelpersNamespaceObject } = require('./helpers')
+
 const {
     normalizeName,
     normalizeNamespace,
@@ -18,7 +20,7 @@ const {
     normalizeVersion
 } = require('./normalize')
 
-const { createHelpersNamespaceObject } = require('./helpers')
+const { localeCompare } = require('./strings')
 
 const {
     validateName,
@@ -37,6 +39,26 @@ const PurlComponentStringNormalizer = (comp) =>
     typeof comp === 'string' ? comp : undefined
 
 const PurlComponentValidator = (_comp, _throws) => true
+
+const componentSortOrderLookup = {
+    __proto__: null,
+    type: 0,
+    namespace: 1,
+    name: 2,
+    version: 3,
+    qualifiers: 4,
+    qualifierKey: 5,
+    qualifierValue: 6,
+    subpath: 7
+}
+
+function componentSortOrder(comp) {
+    return componentSortOrderLookup[comp] ?? comp
+}
+
+function componentComparator(compA, compB) {
+    return localeCompare(componentSortOrder(compA), componentSortOrder(compB))
+}
 
 module.exports = {
     // Rules for each purl component:
@@ -69,6 +91,7 @@ module.exports = {
             }
         },
         {
+            comparator: componentComparator,
             encode: PurlComponentEncoder,
             normalize: PurlComponentStringNormalizer,
             validate: PurlComponentValidator

@@ -1,5 +1,12 @@
 'use strict'
 
+// Intl.Collator is faster than String#localeCompare
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/localeCompare:
+// > When comparing large numbers of strings, such as in sorting large arrays,
+// > it is better to create an Intl.Collator object and use the function provided
+// > by its compare() method.
+const { compare: localeCompare } = new Intl.Collator()
+
 // This regexp is valid as of 2024-08-01.
 // https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 const regexSemverNumberedGroups =
@@ -110,6 +117,7 @@ module.exports = {
     isBlank,
     isNonEmptyString,
     isSemverString,
+    localeCompare,
     lowerName,
     lowerNamespace,
     lowerVersion,
