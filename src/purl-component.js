@@ -4,6 +4,7 @@ const {
     encodeNamespace,
     encodeVersion,
     encodeQualifiers,
+    encodeQualifierKey,
     encodeQualifierValue,
     encodeSubpath,
     encodeURIComponent
@@ -69,6 +70,7 @@ module.exports = {
                 namespace: encodeNamespace,
                 version: encodeVersion,
                 qualifiers: encodeQualifiers,
+                qualifierKey: encodeQualifierKey,
                 qualifierValue: encodeQualifierValue,
                 subpath: encodeSubpath
             },
