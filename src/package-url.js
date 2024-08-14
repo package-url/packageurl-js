@@ -313,7 +313,7 @@ const Type = createHelpersNamespaceObject(
             // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#mlflow
             mlflow(purl, throws) {
                 return validateEmptyByType(
-                    'mflow',
+                    'mlflow',
                     'namespace',
                     purl.namespace,
                     throws
