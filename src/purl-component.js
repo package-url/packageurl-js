@@ -4,8 +4,7 @@ const {
     encodeNamespace,
     encodeVersion,
     encodeQualifiers,
-    encodeQualifierKey,
-    encodeQualifierValue,
+    encodeQualifierParam,
     encodeSubpath,
     encodeURIComponent
 } = require('./encode')
@@ -70,8 +69,8 @@ module.exports = {
                 namespace: encodeNamespace,
                 version: encodeVersion,
                 qualifiers: encodeQualifiers,
-                qualifierKey: encodeQualifierKey,
-                qualifierValue: encodeQualifierValue,
+                qualifierKey: encodeQualifierParam,
+                qualifierValue: encodeQualifierParam,
                 subpath: encodeSubpath
             },
             normalize: {
