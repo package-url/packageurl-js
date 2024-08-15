@@ -36,13 +36,13 @@ declare module "packageurl-js" {
 
   export type PurlTypeValidator = (purl: PackageURL, throws: boolean) => boolean
 
-  export type PurlComponentEntry = ReadOnly<{
+  export type PurlComponentEntry = Readonly<{
     encode: PurlComponentEncoder
     normalize: PurlComponentStringNormalizer
     validate: PurlComponentValidator
   }>
 
-  export type PurlTypeEntry = ReadOnly<{
+  export type PurlTypeEntry = Readonly<{
     normalize: PurlTypNormalizer
     validate: PurlTypeValidator
   }>
@@ -51,7 +51,7 @@ declare module "packageurl-js" {
    * Collection of PURL component encode, normalize, and validate methods.
    * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#rules-for-each-purl-component specification}
    */
-  export type PurlComponent = ReadOnly<{
+  export type PurlComponent = Readonly<{
     type: PurlComponentEntry
     namespace: PurlComponentEntry
     name: PurlComponentEntry
@@ -66,7 +66,7 @@ declare module "packageurl-js" {
    * Known qualifiers names.
    * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-SPECIFICATION.rst#known-qualifiers-keyvalue-pairs specification}
    */
-  export type PurlQualifierNames = ReadOnly<{
+  export type PurlQualifierNames = Readonly<{
     RepositoryUrl:'repository_url',
     DownloadUrl: 'download_url',
     VcsUrl: 'vcs_url',
@@ -78,7 +78,7 @@ declare module "packageurl-js" {
    * Collection of PURL type normalize and validate methods.
    * @see {@link https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#known-purl-types specification}
    */
-  export type PurlType = ReadOnly<{
+  export type PurlType = Readonly<{
     alpm: PurlTypeEntry
     apk: PurlTypeEntry
     bitbucket: PurlTypeEntry
@@ -184,9 +184,10 @@ declare module "packageurl-js" {
     ]
   }
 
+  // @ts-ignore
   export const PurlComponent = <PurlComponent>{}
-
+  // @ts-ignore
   export const PurlQualifierNames = <PurlQualifierNames>{}
-
+  // @ts-ignore
   export const PurlType = <PurlType>{}
 }
