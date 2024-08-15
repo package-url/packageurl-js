@@ -4,29 +4,30 @@ const { isObject } = require('./objects')
 const { isNonEmptyString } = require('./strings')
 
 const reusedSearchParams = new URLSearchParams()
+const reusedSearchParamKey = '_'
+const reusedSearchParamOffset = 2 // '_='.length
 
 const { encodeURIComponent } = globalThis
 
-function encodeWithColonAndForwardSlash(str) {
-    return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2F/g, '/')
-}
-
-function encodeWithColonAndPlusSign(str) {
-    return encodeURIComponent(str).replace(/%3A/g, ':').replace(/%2B/g, '+')
-}
-
-function encodeWithForwardSlash(str) {
-    return encodeURIComponent(str).replace(/%2F/g, '/')
-}
-
 function encodeNamespace(namespace) {
     return isNonEmptyString(namespace)
-        ? encodeWithColonAndForwardSlash(namespace)
+        ? encodeURIComponent(namespace)
+              .replace(/%3A/g, ':')
+              .replace(/%2F/g, '/')
         : ''
 }
 
-function encodeVersion(version) {
-    return isNonEmptyString(version) ? encodeWithColonAndPlusSign(version) : ''
+function encodeQualifierParam(param) {
+    if (isNonEmptyString(param)) {
+        // Param key and value are encoded with `percentEncodeSet` of
+        // 'application/x-www-form-urlencoded' and `spaceAsPlus` of `true`.
+        // https://url.spec.whatwg.org/#urlencoded-serializing
+        reusedSearchParams.set(reusedSearchParamKey, param)
+        return replacePlusSignWithPercentEncodedSpace(
+            reusedSearchParams.toString().slice(reusedSearchParamOffset)
+        )
+    }
+    return ''
 }
 
 function encodeQualifiers(qualifiers) {
@@ -43,26 +44,16 @@ function encodeQualifiers(qualifiers) {
     return ''
 }
 
-function encodeQualifierParam(qualifierValue) {
-    return isNonEmptyString
-        ? encodeURLSearchParamWithPercentEncodedSpace(param)
+function encodeSubpath(subpath) {
+    return isNonEmptyString(subpath)
+        ? encodeURIComponent(subpath).replace(/%2F/g, '/')
         : ''
 }
 
-function encodeSubpath(subpath) {
-    return isNonEmptyString(subpath) ? encodeWithForwardSlash(subpath) : ''
-}
-
-function encodeURLSearchParam(param) {
-    // Param key and value are encoded with `percentEncodeSet` of
-    // 'application/x-www-form-urlencoded' and `spaceAsPlus` of `true`.
-    // https://url.spec.whatwg.org/#urlencoded-serializing
-    reusedSearchParams.set('_', qualifierValue)
-    return reusedSearchParams.toString().slice(2)
-}
-
-function encodeURLSearchParamWithPercentEncodedSpace(str) {
-    return replacePlusSignWithPercentEncodedSpace(encodeURLSearchParam(str))
+function encodeVersion(version) {
+    return isNonEmptyString(version)
+        ? encodeURIComponent(version).replace(/%3A/g, ':').replace(/%2B/g, '+')
+        : ''
 }
 
 function replacePlusSignWithPercentEncodedSpace(str) {
@@ -71,15 +62,10 @@ function replacePlusSignWithPercentEncodedSpace(str) {
 }
 
 module.exports = {
-    encodeWithColonAndForwardSlash,
-    encodeWithColonAndPlusSign,
-    encodeWithForwardSlash,
     encodeNamespace,
     encodeVersion,
     encodeQualifiers,
     encodeQualifierParam,
     encodeSubpath,
-    encodeURIComponent,
-    encodeURLSearchParam,
-    encodeURLSearchParamWithPercentEncodedSpace
+    encodeURIComponent
 }

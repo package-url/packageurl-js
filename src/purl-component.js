@@ -12,28 +12,28 @@ const {
 const { createHelpersNamespaceObject } = require('./helpers')
 
 const {
-    normalizeName,
-    normalizeNamespace,
-    normalizeQualifiers,
-    normalizeSubpath,
     normalizeType,
-    normalizeVersion
+    normalizeNamespace,
+    normalizeName,
+    normalizeVersion,
+    normalizeQualifiers,
+    normalizeSubpath
 } = require('./normalize')
 
-const { localeCompare } = require('./strings')
+const { localeCompare, isNonEmptyString } = require('./strings')
 
 const {
-    validateName,
+    validateType,
     validateNamespace,
+    validateName,
+    validateVersion,
     validateQualifiers,
     validateQualifierKey,
-    validateSubpath,
-    validateType,
-    validateVersion
+    validateSubpath
 } = require('./validate')
 
 const PurlComponentEncoder = (comp) =>
-    typeof comp === 'string' && comp.length ? encodeURIComponent(comp) : ''
+    isNonEmptyString(comp) ? encodeURIComponent(comp) : ''
 
 const PurlComponentStringNormalizer = (comp) =>
     typeof comp === 'string' ? comp : undefined

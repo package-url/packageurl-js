@@ -1,6 +1,7 @@
 'use strict'
 
 const { isNullishOrEmptyString } = require('./lang')
+const { isNonEmptyString } = require('./strings')
 
 function validateEmptyByType(type, name, value, throws) {
     if (!isNullishOrEmptyString(value)) {
@@ -104,7 +105,7 @@ function validateRequiredByType(type, name, value, throws) {
 }
 
 function validateStartsWithoutNumber(name, value, throws) {
-    if (value.length !== 0) {
+    if (isNonEmptyString(value)) {
         const code = value.charCodeAt(0)
         if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
             if (throws) {
