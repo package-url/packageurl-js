@@ -1,3 +1,8 @@
+# 2.0.0
+* Significant refactor based on code from @jdalton
+* Numerous bug fixes and improvements the community was asking for
+  * See closed issues and PRs for details (too many to list here)
+
 # 1.2.1
 ## Bug Fixes
 * purls with + in versions are now valid #52 (contributed by @satanshiro)
