@@ -28,7 +28,6 @@ const TEST_FILE = [
     ...require('./data/contrib-tests.json')
 ]
 
-/** @type {import('../src/package-url')} */
 const { PackageURL } = require('../src/package-url')
 
 describe('PackageURL', function () {
