@@ -169,6 +169,48 @@ describe('PackageURL', function () {
                 testInvalid(paramName)
             })
         })
+
+        it('should not decode params', () => {
+            assert.strictEqual(
+                new PackageURL('type', '%21', 'name').toString(),
+                'pkg:type/%2521/name'
+            )
+            assert.strictEqual(
+                new PackageURL('type', 'namespace', '%21').toString(),
+                'pkg:type/namespace/%2521'
+            )
+            assert.strictEqual(
+                new PackageURL('type', 'namespace', 'name', '%21').toString(),
+                'pkg:type/namespace/name@%2521'
+            )
+            assert.strictEqual(
+                new PackageURL('type', 'namespace', 'name', '1.0', {
+                    a: '%21'
+                }).toString(),
+                'pkg:type/namespace/name@1.0?a=%2521'
+            )
+            assert.strictEqual(
+                new PackageURL(
+                    'type',
+                    'namespace',
+                    'name',
+                    '1.0',
+                    'a=%2521'
+                ).toString(),
+                'pkg:type/namespace/name@1.0?a=%2521'
+            )
+            assert.strictEqual(
+                new PackageURL(
+                    'type',
+                    'namespace',
+                    'name',
+                    '1.0',
+                    null,
+                    '%21'
+                ).toString(),
+                'pkg:type/namespace/name@1.0#%2521'
+            )
+        })
     })
 
     describe('toString()', function () {

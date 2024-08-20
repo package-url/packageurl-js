@@ -3,17 +3,13 @@
 const { isObject } = require('./objects')
 const { isBlank } = require('./strings')
 
-const { decodeURIComponent } = globalThis
-
 function normalizeName(rawName) {
-    return typeof rawName === 'string'
-        ? decodeURIComponent(rawName).trim()
-        : undefined
+    return typeof rawName === 'string' ? rawName.trim() : undefined
 }
 
 function normalizeNamespace(rawNamespace) {
     return typeof rawNamespace === 'string'
-        ? normalizePath(decodeURIComponent(rawNamespace))
+        ? normalizePath(rawNamespace)
         : undefined
 }
 
@@ -74,7 +70,7 @@ function normalizeQualifiers(rawQualifiers) {
 
 function normalizeSubpath(rawSubpath) {
     return typeof rawSubpath === 'string'
-        ? normalizePath(decodeURIComponent(rawSubpath), subpathFilter)
+        ? normalizePath(rawSubpath, subpathFilter)
         : undefined
 }
 
@@ -82,14 +78,12 @@ function normalizeType(rawType) {
     // The type must NOT be percent-encoded.
     // The type is case insensitive. The canonical form is lowercase.
     return typeof rawType === 'string'
-        ? decodeURIComponent(rawType).trim().toLowerCase()
+        ? rawType.trim().toLowerCase()
         : undefined
 }
 
 function normalizeVersion(rawVersion) {
-    return typeof rawVersion === 'string'
-        ? decodeURIComponent(rawVersion).trim()
-        : undefined
+    return typeof rawVersion === 'string' ? rawVersion.trim() : undefined
 }
 
 function qualifiersToEntries(rawQualifiers) {
