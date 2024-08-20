@@ -21,6 +21,7 @@ SOFTWARE.
 */
 'use strict'
 
+const { decodeURIComponent } = require('./decode')
 const { isObject, recursiveFreeze } = require('./objects')
 const { isBlank, isNonEmptyString, trimLeadingSlashes } = require('./strings')
 
@@ -172,10 +173,11 @@ class PackageURL {
 
         const { pathname } = url
         const firstSlashIndex = pathname.indexOf('/')
-        const rawType =
+        const rawType = decodeURIComponent(
             firstSlashIndex === -1
                 ? pathname
                 : pathname.slice(0, firstSlashIndex)
+        )
         if (firstSlashIndex < 1) {
             return [
                 rawType,
@@ -204,7 +206,7 @@ class PackageURL {
         )
         if (atSignIndex !== -1) {
             // Split the remainder once from right on '@'.
-            rawVersion = pathname.slice(atSignIndex + 1)
+            rawVersion = decodeURIComponent(pathname.slice(atSignIndex + 1))
         }
 
         let rawNamespace
@@ -212,12 +214,16 @@ class PackageURL {
         const lastSlashIndex = beforeVersion.lastIndexOf('/')
         if (lastSlashIndex === -1) {
             // Split the remainder once from right on '/'.
-            rawName = beforeVersion
+            rawName = decodeURIComponent(beforeVersion)
         } else {
             // Split the remainder once from right on '/'.
-            rawName = beforeVersion.slice(lastSlashIndex + 1)
+            rawName = decodeURIComponent(
+                beforeVersion.slice(lastSlashIndex + 1)
+            )
             // Split the remainder on '/'.
-            rawNamespace = beforeVersion.slice(0, lastSlashIndex)
+            rawNamespace = decodeURIComponent(
+                beforeVersion.slice(0, lastSlashIndex)
+            )
         }
 
         let rawQualifiers
@@ -231,7 +237,7 @@ class PackageURL {
         const { hash } = url
         if (hash.length !== 0) {
             // Split the purl string once from right on '#'.
-            rawSubpath = hash.slice(1)
+            rawSubpath = decodeURIComponent(hash.slice(1))
         }
 
         return [

@@ -142,5 +142,65 @@
     "qualifiers": null,
     "subpath": null,
     "is_invalid": false
+  },
+  {
+    "description": "percent encoded namespace",
+    "purl": "pkg:type/100%/name",
+    "canonical_purl": "pkg:type/100%25/name",
+    "type": "type",
+    "namespace": "100%",
+    "name": "name",
+    "version": null,
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "percent encoded name",
+    "purl": "pkg:type/namespace/100%",
+    "canonical_purl": "pkg:type/namespace/100%25",
+    "type": "type",
+    "namespace": "namespace",
+    "name": "100%",
+    "version": null,
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "percent encoded version",
+    "purl": "pkg:type/namespace/name@100%",
+    "canonical_purl": "pkg:type/namespace/name@100%25",
+    "type": "type",
+    "namespace": "namespace",
+    "name": "name",
+    "version": "100%",
+    "qualifiers": null,
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "percent encoded qualifiers",
+    "purl": "pkg:type/namespace/name@1.0?a=100%",
+    "canonical_purl": "pkg:type/namespace/name@1.0?a=100%25",
+    "type": "type",
+    "namespace": "namespace",
+    "name": "name",
+    "version": "1.0",
+    "qualifiers": { "a": "100%" },
+    "subpath": null,
+    "is_invalid": false
+  },
+  {
+    "description": "percent encoded subpath",
+    "purl": "pkg:type/namespace/name@1.0#100%",
+    "canonical_purl": "pkg:type/namespace/name@1.0#100%25",
+    "type": "type",
+    "namespace": "namespace",
+    "name": "name",
+    "version": "1.0",
+    "qualifiers": null,
+    "subpath": "100%",
+    "is_invalid": false
   }
 ]

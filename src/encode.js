@@ -1,11 +1,12 @@
 'use strict'
 
+const {
+    REUSED_SEARCH_PARAMS,
+    REUSED_SEARCH_PARAMS_KEY,
+    REUSED_SEARCH_PARAMS_OFFSET
+} = require('./constants')
 const { isObject } = require('./objects')
 const { isNonEmptyString } = require('./strings')
-
-const reusedSearchParams = new URLSearchParams()
-const reusedSearchParamKey = '_'
-const reusedSearchParamOffset = 2 // '_='.length
 
 const { encodeURIComponent } = globalThis
 
@@ -22,9 +23,9 @@ function encodeQualifierParam(param) {
         // Param key and value are encoded with `percentEncodeSet` of
         // 'application/x-www-form-urlencoded' and `spaceAsPlus` of `true`.
         // https://url.spec.whatwg.org/#urlencoded-serializing
-        reusedSearchParams.set(reusedSearchParamKey, param)
+        REUSED_SEARCH_PARAMS.set(REUSED_SEARCH_PARAMS_KEY, param)
         return replacePlusSignWithPercentEncodedSpace(
-            reusedSearchParams.toString().slice(reusedSearchParamOffset)
+            REUSED_SEARCH_PARAMS.toString().slice(REUSED_SEARCH_PARAMS_OFFSET)
         )
     }
     return ''
