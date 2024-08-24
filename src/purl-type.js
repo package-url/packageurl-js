@@ -14,6 +14,7 @@ const {
 } = require('./strings')
 
 const { validateEmptyByType, validateRequiredByType } = require('./validate')
+const { PurlError } = require('./error')
 
 const PurlTypNormalizer = (purl) => purl
 
@@ -149,16 +150,16 @@ module.exports = {
                     if (isNullishOrEmptyString(purl.namespace)) {
                         if (purl.qualifiers?.channel) {
                             if (throws) {
-                                throw new Error(
-                                    'Invalid purl: conan requires a "namespace" field when a "channel" qualifier is present.'
+                                throw new PurlError(
+                                    'conan requires a "namespace" component when a "channel" qualifier is present'
                                 )
                             }
                             return false
                         }
                     } else if (isNullishOrEmptyString(purl.qualifiers)) {
                         if (throws) {
-                            throw new Error(
-                                'Invalid purl: conan requires a "qualifiers" field when a namespace is present.'
+                            throw new PurlError(
+                                'conan requires a "qualifiers" component when a namespace is present'
                             )
                         }
                         return false
@@ -190,8 +191,8 @@ module.exports = {
                         !isSemverString(version.slice(1))
                     ) {
                         if (throws) {
-                            throw new Error(
-                                'Invalid purl: golang "version" field starting with a "v" must be followed by a valid semver version'
+                            throw new PurlError(
+                                'golang "version" component starting with a "v" must be followed by a valid semver version'
                             )
                         }
                         return false
@@ -241,8 +242,8 @@ module.exports = {
                   )
               ) {
                   if (throws) {
-                      throw new Error(
-                          'Invalid purl: pub "name" field may only contain [a-z0-9_] characters'
+                      throw new PurlError(
+                          'pub "name" component may only contain [a-z0-9_] characters'
                       )
                   }
                   return false

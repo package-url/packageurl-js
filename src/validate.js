@@ -1,14 +1,13 @@
 'use strict'
 
+const { PurlError } = require('./error')
 const { isNullishOrEmptyString } = require('./lang')
 const { isNonEmptyString } = require('./strings')
 
 function validateEmptyByType(type, name, value, throws) {
     if (!isNullishOrEmptyString(value)) {
         if (throws) {
-            throw new Error(
-                `Invalid purl: ${type} "${name}" field must be empty.`
-            )
+            throw new PurlError(`${type} "${name}" component must be empty`)
         }
         return false
     }
@@ -32,9 +31,7 @@ function validateQualifiers(qualifiers, throws) {
     }
     if (typeof qualifiers !== 'object') {
         if (throws) {
-            throw new Error(
-                'Invalid purl: "qualifiers" argument must be an object.'
-            )
+            throw new PurlError('"qualifiers" must be an object')
         }
         return false
     }
@@ -74,8 +71,8 @@ function validateQualifierKey(key, throws) {
             )
         ) {
             if (throws) {
-                throw new Error(
-                    `Invalid purl: qualifier "${key}" contains an illegal character.`
+                throw new PurlError(
+                    `qualifier "${key}" contains an illegal character`
                 )
             }
             return false
@@ -87,7 +84,7 @@ function validateQualifierKey(key, throws) {
 function validateRequired(name, value, throws) {
     if (isNullishOrEmptyString(value)) {
         if (throws) {
-            throw new Error(`Invalid purl: "${name}" is a required field.`)
+            throw new PurlError(`"${name}" is a required component`)
         }
         return false
     }
@@ -97,7 +94,7 @@ function validateRequired(name, value, throws) {
 function validateRequiredByType(type, name, value, throws) {
     if (isNullishOrEmptyString(value)) {
         if (throws) {
-            throw new Error(`Invalid purl: ${type} requires a "${name}" field.`)
+            throw new PurlError(`${type} requires a "${name}" component`)
         }
         return false
     }
@@ -109,8 +106,8 @@ function validateStartsWithoutNumber(name, value, throws) {
         const code = value.charCodeAt(0)
         if (code >= 48 /*'0'*/ && code <= 57 /*'9'*/) {
             if (throws) {
-                throw new Error(
-                    `Invalid purl: ${name} "${value}" cannot start with a number.`
+                throw new PurlError(
+                    `${name} "${value}" cannot start with a number`
                 )
             }
             return false
@@ -124,7 +121,7 @@ function validateStrings(name, value, throws) {
         return true
     }
     if (throws) {
-        throw new Error(`Invalid purl: "'${name}" argument must be a string.`)
+        throw new PurlError(`"'${name}" must be a string`)
     }
     return false
 }
@@ -160,8 +157,8 @@ function validateType(type, throws) {
             )
         ) {
             if (throws) {
-                throw new Error(
-                    `Invalid purl: type "${type}" contains an illegal character.`
+                throw new PurlError(
+                    `type "${type}" contains an illegal character`
                 )
             }
             return false

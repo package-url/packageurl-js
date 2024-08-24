@@ -216,18 +216,13 @@ describe('PackageURL', function () {
     describe('toString()', function () {
         it('type is validated', function () {
             ;['ty#pe', 'ty@pe', 'ty/pe', '1type'].forEach((type) => {
-                try {
-                    new PackageURL(type, undefined, 'name')
-                    assert.fail()
-                } catch (e) {
-                    // prettier-ignore
-                    assert.ok(
-                        e.toString().includes('contains an illegal character') ||
-                        e.toString().includes('cannot start with a number.')
-                    )
-                }
+                assert.throws(
+                    () => new PackageURL(type, undefined, 'name'),
+                    /contains an illegal character|cannot start with a number/
+                )
             })
         })
+
         it('encode #', function () {
             /* The # is a delimiter between url and subpath. */
             const purl = new PackageURL(
@@ -243,6 +238,7 @@ describe('PackageURL', function () {
                 'pkg:type/name%23space/na%23me@ver%23sion?foo=bar%23baz#sub%23path'
             )
         })
+
         it('encode @', function () {
             /* The @ is a delimiter between package name and version. */
             const purl = new PackageURL(
@@ -353,6 +349,30 @@ describe('PackageURL', function () {
             })
             assert.strictEqual(purl.subpath, 'sub@path')
         })
+
+        it('should error on decode failures', () => {
+            assert.throws(
+                () => PackageURL.fromString('pkg:type/100%/name'),
+                /unable to decode "namespace" component/
+            )
+            assert.throws(
+                () => PackageURL.fromString('pkg:type/namespace/100%'),
+                /unable to decode "name" component/
+            )
+            assert.throws(
+                () => PackageURL.fromString('pkg:type/namespace/name@100%'),
+                /unable to decode "version" component/
+            )
+            assert.throws(
+                () =>
+                    PackageURL.fromString('pkg:type/namespace/name@1.0?a=100%'),
+                /unable to decode "qualifiers" component/
+            )
+            assert.throws(
+                () => PackageURL.fromString('pkg:type/namespace/name@1.0#100%'),
+                /unable to decode "subpath" component/
+            )
+        })
     })
 
     describe('test-suite-data', function () {
@@ -360,34 +380,24 @@ describe('PackageURL', function () {
             describe(obj.description, function () {
                 if (obj.is_invalid) {
                     it(`should not be possible to create invalid ${obj.type} PackageURLs`, function () {
-                        try {
-                            new PackageURL(
-                                obj.type,
-                                obj.namespace,
-                                obj.name,
-                                obj.version,
-                                obj.qualifiers,
-                                obj.subpath
-                            )
-                            assert.fail()
-                        } catch (e) {
-                            // prettier-ignore
-                            assert.ok(
-                                e.toString().includes('is a required field') ||
-                                e.toString().includes('Invalid purl')
-                            )
-                        }
+                        assert.throws(
+                            () =>
+                                new PackageURL(
+                                    obj.type,
+                                    obj.namespace,
+                                    obj.name,
+                                    obj.version,
+                                    obj.qualifiers,
+                                    obj.subpath
+                                ),
+                            /is a required|Invalid purl/
+                        )
                     })
                     it(`should not be possible to parse invalid ${obj.type} PackageURLs`, function () {
-                        try {
-                            PackageURL.fromString(obj.purl)
-                        } catch (e) {
-                            // prettier-ignore
-                            assert.ok(
-                                e.toString().includes('Error: purl is missing the required') ||
-                                e.toString().includes('Invalid purl')
-                            )
-                        }
+                        assert.throws(
+                            () => PackageURL.fromString(obj.purl),
+                            /missing the required|Invalid purl/
+                        )
                     })
                 } else {
                     it(`should be able to create valid ${obj.type} PackageURLs`, function () {

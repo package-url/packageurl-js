@@ -21,13 +21,14 @@ SOFTWARE.
 */
 'use strict'
 
-const { decodeURIComponent } = require('./decode')
+const { decodePurlComponent } = require('./decode')
 const { isObject, recursiveFreeze } = require('./objects')
 const { isBlank, isNonEmptyString, trimLeadingSlashes } = require('./strings')
 
 const { PurlComponent } = require('./purl-component')
 const { PurlQualifierNames } = require('./purl-qualifier-names')
 const { PurlType } = require('./purl-type')
+const { PurlError } = require('./error')
 
 class PackageURL {
     static Component = recursiveFreeze(PurlComponent)
@@ -149,16 +150,14 @@ class PackageURL {
                         ? url
                         : new URL(purlStr)
             } catch (e) {
-                throw new Error('Invalid purl: failed to parse as URL', {
+                throw new PurlError('failed to parse as URL', {
                     cause: e
                 })
             }
         }
         // The scheme is a constant with the value "pkg".
         if (url?.protocol !== 'pkg:') {
-            throw new Error(
-                'Invalid purl: missing required "pkg" scheme component'
-            )
+            throw new PurlError('missing required "pkg" scheme component')
         }
         // A purl must NOT contain a URL Authority i.e. there is no support for
         // username, password, host and port components.
@@ -166,14 +165,13 @@ class PackageURL {
             maybeUrlWithAuth.username !== '' ||
             maybeUrlWithAuth.password !== ''
         ) {
-            throw new Error(
-                'Invalid purl: cannot contain a "user:pass@host:port"'
-            )
+            throw new PurlError('cannot contain a "user:pass@host:port"')
         }
 
         const { pathname } = url
         const firstSlashIndex = pathname.indexOf('/')
-        const rawType = decodeURIComponent(
+        const rawType = decodePurlComponent(
+            'type',
             firstSlashIndex === -1
                 ? pathname
                 : pathname.slice(0, firstSlashIndex)
@@ -206,7 +204,10 @@ class PackageURL {
         )
         if (atSignIndex !== -1) {
             // Split the remainder once from right on '@'.
-            rawVersion = decodeURIComponent(pathname.slice(atSignIndex + 1))
+            rawVersion = decodePurlComponent(
+                'version',
+                pathname.slice(atSignIndex + 1)
+            )
         }
 
         let rawNamespace
@@ -214,14 +215,16 @@ class PackageURL {
         const lastSlashIndex = beforeVersion.lastIndexOf('/')
         if (lastSlashIndex === -1) {
             // Split the remainder once from right on '/'.
-            rawName = decodeURIComponent(beforeVersion)
+            rawName = decodePurlComponent('name', beforeVersion)
         } else {
             // Split the remainder once from right on '/'.
-            rawName = decodeURIComponent(
+            rawName = decodePurlComponent(
+                'name',
                 beforeVersion.slice(lastSlashIndex + 1)
             )
             // Split the remainder on '/'.
-            rawNamespace = decodeURIComponent(
+            rawNamespace = decodePurlComponent(
+                'namespace',
                 beforeVersion.slice(0, lastSlashIndex)
             )
         }
@@ -229,6 +232,9 @@ class PackageURL {
         let rawQualifiers
         const { searchParams } = url
         if (searchParams.size !== 0) {
+            searchParams.forEach((value) =>
+                decodePurlComponent('qualifiers', value)
+            )
             // Split the remainder once from right on '?'.
             rawQualifiers = searchParams
         }
@@ -237,7 +243,7 @@ class PackageURL {
         const { hash } = url
         if (hash.length !== 0) {
             // Split the purl string once from right on '#'.
-            rawSubpath = decodeURIComponent(hash.slice(1))
+            rawSubpath = decodePurlComponent('subpath', hash.slice(1))
         }
 
         return [
