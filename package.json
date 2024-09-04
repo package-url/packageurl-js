@@ -1,6 +1,6 @@
 {
   "name": "packageurl-js",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "JavaScript library to parse and build \"purl\" aka. package URLs. This is a microlibrary implementing the purl spec at https://github.com/package-url",
   "keywords": [
     "package",
