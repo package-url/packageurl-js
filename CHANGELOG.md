@@ -1,3 +1,7 @@
+# 2.0.1
+## Bug Fix
+* Fix decoding problems around the `%` character #75 (fix contributed by @jdalton)
+
 # 2.0.0
 * Significant refactor based on code from @jdalton
 * Numerous bug fixes and improvements the community was asking for
