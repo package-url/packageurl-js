@@ -32,10 +32,10 @@ const {
     validateSubpath
 } = require('./validate')
 
-const PurlComponentEncoder = (comp) =>
+const PurlComponentEncoder = comp =>
     isNonEmptyString(comp) ? encodeURIComponent(comp) : ''
 
-const PurlComponentStringNormalizer = (comp) =>
+const PurlComponentStringNormalizer = comp =>
     typeof comp === 'string' ? comp : undefined
 
 const PurlComponentValidator = (_comp, _throws) => true

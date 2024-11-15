@@ -16,7 +16,7 @@ const {
 const { validateEmptyByType, validateRequiredByType } = require('./validate')
 const { PurlError } = require('./error')
 
-const PurlTypNormalizer = (purl) => purl
+const PurlTypNormalizer = purl => purl
 
 const PurlTypeValidator = (_purl, _throws) => true
 

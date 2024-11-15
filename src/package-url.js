@@ -232,7 +232,7 @@ class PackageURL {
         let rawQualifiers
         const { searchParams } = url
         if (searchParams.size !== 0) {
-            searchParams.forEach((value) =>
+            searchParams.forEach(value =>
                 decodePurlComponent('qualifiers', value)
             )
             // Split the remainder once from right on '?'.

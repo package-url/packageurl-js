@@ -7,7 +7,7 @@ const { PackageURL } = require('../src/package-url')
 describe('PackageURL', () => {
     it('Benchmarking the library', () => {
         const iterations = 10000
-        const data = TEST_FILE.filter((obj) => !obj.is_invalid)
+        const data = TEST_FILE.filter(obj => !obj.is_invalid)
         const { length: dataLength } = data
         const objects = []
         for (let i = 0; i < iterations; i += dataLength) {
