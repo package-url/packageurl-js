@@ -1,9 +1,8 @@
 'use strict'
 
+const { encodeURIComponent } = require('./encode')
 const { isNullishOrEmptyString } = require('./lang')
-
 const { createHelpersNamespaceObject } = require('./helpers')
-
 const {
     isSemverString,
     lowerName,
@@ -12,13 +11,46 @@ const {
     replaceDashesWithUnderscores,
     replaceUnderscoresWithDashes
 } = require('./strings')
-
 const { validateEmptyByType, validateRequiredByType } = require('./validate')
 const { PurlError } = require('./error')
 
 const PurlTypNormalizer = purl => purl
-
 const PurlTypeValidator = (_purl, _throws) => true
+
+const getNpmBuiltinNames = (() => {
+    let builtinNames
+    return () => {
+        if (builtinNames === undefined) {
+            builtinNames =
+                // Avoid a require('module') call directly so folks can bundle
+                // for the browser without issues.
+                (typeof module === 'object' &&
+                    module !== null &&
+                    module.constructor?.builtinModules) ||
+                require('../data/npm/builtin-names.json')
+        }
+        return builtinNames
+    }
+})()
+
+const getNpmLegacyNames = (() => {
+    let legacyNames
+    return () => {
+        if (legacyNames === undefined) {
+            legacyNames = require('../data/npm/legacy-names.json')
+        }
+        return legacyNames
+    }
+})()
+
+function getNpmId(purl) {
+    const { name, namespace } = purl
+    return `${namespace?.length > 0 ? `${namespace}/` : ''}${name}`
+}
+
+const isNpmBuiltinName = id => getNpmBuiltinNames().includes(id.toLowerCase())
+
+const isNpmLegacyName = id => getNpmLegacyNames().includes(id)
 
 module.exports = {
     // PURL types:
@@ -104,7 +136,11 @@ module.exports = {
                 // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#npm
                 npm(purl) {
                     lowerNamespace(purl)
-                    lowerName(purl)
+                    // Ignore lowercasing legacy names because they could be mixed case.
+                    // https://github.com/npm/validate-npm-package-name/tree/v6.0.0?tab=readme-ov-file#legacy-names
+                    if (!isNpmLegacyName(getNpmId(purl))) {
+                        lowerName(purl)
+                    }
                     return purl
                 },
                 // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#luarocks
@@ -217,6 +253,125 @@ module.exports = {
                         throws
                     )
                 },
+                // Validation based on
+                // https://github.com/npm/validate-npm-package-name/tree/v6.0.0
+                // ISC License
+                // Copyright (c) 2015, npm, Inc
+                npm(purl, throws) {
+                    const { name, namespace } = purl
+                    const hasNs = namespace?.length > 0
+                    const id = getNpmId(purl)
+                    const code0 = id.charCodeAt(0)
+                    const compName = hasNs ? 'namespace' : 'name'
+                    if (code0 === 46 /*'.'*/) {
+                        if (throws) {
+                            throw new PurlError(
+                                `npm "${compName}" component cannot start with a period`
+                            )
+                        }
+                        return false
+                    }
+                    if (code0 === 95 /*'_'*/) {
+                        if (throws) {
+                            throw new PurlError(
+                                `npm "${compName}" component cannot start with an underscore`
+                            )
+                        }
+                        return false
+                    }
+                    if (name.trim() !== name) {
+                        if (throws) {
+                            throw new PurlError(
+                                'npm "name" component cannot contain leading or trailing spaces'
+                            )
+                        }
+                        return false
+                    }
+                    if (encodeURIComponent(name) !== name) {
+                        if (throws) {
+                            throw new PurlError(
+                                `npm "name" component can only contain URL-friendly characters`
+                            )
+                        }
+                        return false
+                    }
+                    if (hasNs) {
+                        if (namespace.trim() !== namespace) {
+                            if (throws) {
+                                throw new PurlError(
+                                    'npm "namespace" component cannot contain leading or trailing spaces'
+                                )
+                            }
+                            return false
+                        }
+                        if (code0 !== 64 /*'@'*/) {
+                            throw new PurlError(
+                                `npm "namespace" component must start with an "@" character`
+                            )
+                        }
+                        const namespaceWithoutAtSign = namespace.slice(1)
+                        if (
+                            encodeURIComponent(namespaceWithoutAtSign) !==
+                            namespaceWithoutAtSign
+                        ) {
+                            if (throws) {
+                                throw new PurlError(
+                                    `npm "namespace" component can only contain URL-friendly characters`
+                                )
+                            }
+                            return false
+                        }
+                    }
+                    const loweredId = id.toLowerCase()
+                    if (
+                        loweredId === 'node_modules' ||
+                        loweredId === 'favicon.ico'
+                    ) {
+                        if (throws) {
+                            throw new PurlError(
+                                `npm "${compName}" component of "${loweredId}" is not allowed`
+                            )
+                        }
+                        return false
+                    }
+                    // The remaining checks are only for modern names.
+                    // https://github.com/npm/validate-npm-package-name/tree/v6.0.0?tab=readme-ov-file#naming-rules
+                    if (!isNpmLegacyName(id)) {
+                        if (id.length > 214) {
+                            if (throws) {
+                                throw new PurlError(
+                                    `npm "namespace" and "name" components can not collectively be more than 214 characters`
+                                )
+                            }
+                            return false
+                        }
+                        if (loweredId !== id) {
+                            if (throws) {
+                                throw new PurlError(
+                                    `npm "name" component can not contain capital letters`
+                                )
+                            }
+                            return false
+                        }
+                        if (/[~'!()*]/.test(name)) {
+                            if (throws) {
+                                throw new PurlError(
+                                    `npm "name" component can not contain special characters ("~\'!()*")`
+                                )
+                            }
+                            return false
+                        }
+                        if (isNpmBuiltinName(id)) {
+                            if (throws) {
+                                throw new PurlError(
+                                    'npm "name" component can not be a core module name'
+                                )
+                            }
+                            return false
+                        }
+                    }
+                    return true
+                },
                 // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#oci
                 oci(purl, throws) {
                     return validateEmptyByType(
@@ -233,21 +388,21 @@ module.exports = {
                         const code = name.charCodeAt(i)
                         // prettier-ignore
                         if (
-                  !(
-                      (
-                          (code >= 48 && code <= 57)  || // 0-9
-                          (code >= 97 && code <= 122) || // a-z
-                          code === 95 // _
-                      )
-                  )
-              ) {
-                  if (throws) {
-                      throw new PurlError(
-                          'pub "name" component may only contain [a-z0-9_] characters'
-                      )
-                  }
-                  return false
-              }
+                            !(
+                                (
+                                    (code >= 48 && code <= 57)  || // 0-9
+                                    (code >= 97 && code <= 122) || // a-z
+                                    code === 95 // _
+                                )
+                            )
+                        ) {
+                            if (throws) {
+                                throw new PurlError(
+                                    'pub "name" component may only contain [a-z0-9_] characters'
+                                )
+                            }
+                            return false
+                        }
                     }
                     return true
                 },

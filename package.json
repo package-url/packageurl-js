@@ -19,14 +19,23 @@
   },
   "scripts": {
     "test": "mocha",
-    "prettify": "prettier --write ./**/*.js"
+    "prettify": "prettier --write ./**/*.js",
+    "update": "run-p --aggregate-output update:**",
+    "update:data:npm": "node --disable-warning=ExperimentalWarning ./scripts/update-data-npm.js"
   },
   "devDependencies": {
+    "all-the-package-names": "2.0.0",
+    "all-the-package-names-v1.3905.0": "npm:all-the-package-names@1.3905.0",
     "mocha": "^10.4.0",
-    "prettier": "^3.2.5"
+    "npm-run-all2": "^7.0.1",
+    "pacote": "^20.0.0",
+    "prettier": "^3.2.5",
+    "validate-npm-package-name": "^6.0.0",
+    "yocto-spinner": "^0.1.1"
   },
   "files": [
     "*{.js,.ts}",
+    "data/**/*.json",
     "src/**/*{.js,.ts}",
     "LICENSE",
     "README.md"

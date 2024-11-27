@@ -23,12 +23,20 @@ SOFTWARE.
 const assert = require('assert')
 const { describe, it } = require('mocha')
 
+const npmBuiltinNames = require('../data/npm/builtin-names.json')
+const npmLegacyNames = require('../data/npm/legacy-names.json')
+
 const TEST_FILE = [
     ...require('./data/test-suite-data.json'),
     ...require('./data/contrib-tests.json')
 ]
 
 const { PackageURL } = require('../src/package-url')
+
+function getNpmId(purl) {
+    const { name, namespace } = purl
+    return `${namespace?.length > 0 ? `${namespace}/` : ''}${name}`
+}
 
 describe('PackageURL', function () {
     describe('KnownQualifierNames', function () {
@@ -467,6 +475,40 @@ describe('PackageURL', function () {
                     })
                 }
             })
+        })
+    })
+
+    describe('npm', function () {
+        it("should allow legacy names to be mixed case, match a builtin, or contain ~'!()* characters", function () {
+            for (const legacyName of npmLegacyNames) {
+                let purl
+                assert.doesNotThrow(() => {
+                    const parts = legacyName.split('/')
+                    const namespace = parts.length > 1 ? parts[0] : ''
+                    const name = parts.at(-1)
+                    purl = new PackageURL('npm', namespace, name)
+                })
+                const id = purl ? getNpmId(purl) : ''
+                const isBuiltin = npmBuiltinNames.includes(id)
+                const isMixedCased = /[A-Z]/.test(id)
+                const containsIllegalCharacters = /[~'!()*]/.test(id)
+                assert.ok(
+                    isBuiltin || isMixedCased || containsIllegalCharacters,
+                    `assert for ${legacyName}`
+                )
+            }
+        })
+        it('should not allow non-legacy builtin names', function () {
+            for (const builtinName of npmBuiltinNames) {
+                if (!npmLegacyNames.includes(builtinName)) {
+                    assert.throws(() => {
+                        const parts = builtinName.split('/')
+                        const namespace = parts.length > 1 ? parts[0] : ''
+                        const name = parts.at(-1)
+                        new PackageURL('npm', namespace, name)
+                    }, `assert for ${builtinName}`)
+                }
+            }
         })
     })
 
