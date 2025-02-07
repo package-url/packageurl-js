@@ -24,7 +24,7 @@ const npmDataPath = path.join(dataPath, 'npm')
 const npmBuiltinNamesJsonPath = path.join(npmDataPath, 'builtin-names.json')
 const npmLegacyNamesJsonPath = path.join(npmDataPath, 'legacy-names.json')
 
-const { compare: alphanumericComparator } = new Intl.Collator(undefined, {
+const { compare: naturalCompare } = new Intl.Collator(undefined, {
     numeric: true,
     sensitivity: 'base'
 })
@@ -82,7 +82,11 @@ async function pFilterChunk(chunks, callbackFn, options) {
 
 void (async () => {
     const spinner = yoctoSpinner().start()
-    const builtinNames = Module.builtinModules.toSorted(alphanumericComparator)
+    const builtinNames = Module.builtinModules
+        // Node 23 introduces 'node:sea', 'node:sqlite', 'node:test', and
+        // 'node:test/reporters' that have no unprefixed version so we skip them.
+        .filter(n => !n.startsWith('node:'))
+        .toSorted(naturalCompare)
     const allThePackageNames = [
         ...new Set([
             // Load the 43.1MB names.json file of 'all-the-package-names@2.0.0'
@@ -97,7 +101,7 @@ void (async () => {
     ]
     const rawLegacyNames = allThePackageNames
         .filter(n => !validateNpmPackageName(n).validForNewPackages)
-        .sort(alphanumericComparator)
+        .sort(naturalCompare)
     const seenNames = new Set()
     const invalidNames = new Set()
     const legacyNames =
