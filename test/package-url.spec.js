@@ -545,4 +545,52 @@ describe('PackageURL', function () {
             )
         })
     })
+
+    describe('golang', function () {
+        it('should throw an error for invalid semver version starting with v', function () {
+            assert.throws(
+                () =>
+                    new PackageURL(
+                        'golang',
+                        'github.com',
+                        'example/pkg',
+                        'v1.0.invalid'
+                    ),
+                /golang "version" component starting with a "v" must be followed by a valid semver version/
+            )
+        })
+
+        it('should allow valid semver version starting with v', function () {
+            assert.doesNotThrow(() => {
+                new PackageURL(
+                    'golang',
+                    'github.com',
+                    'example/pkg',
+                    'v1.0.0'
+                )
+            })
+        })
+
+        it('should allow pseudo-version numbers', function () {
+            assert.doesNotThrow(() => {
+                new PackageURL(
+                    'golang',
+                    'github.com/cncf/xds',
+                    'go',
+                    'v0.0.0-20210922020428-25de7278fc84'
+                )
+            })
+        })
+
+        it('should allow versions without v prefix', function () {
+            assert.doesNotThrow(() => {
+                new PackageURL(
+                    'golang',
+                    'github.com',
+                    'example/pkg',
+                    'abc123'
+                )
+            })
+        })
+    })
 })
