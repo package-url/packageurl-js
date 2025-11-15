@@ -26,7 +26,7 @@
   "devDependencies": {
     "all-the-package-names": "2.0.0",
     "all-the-package-names-v1.3905.0": "npm:all-the-package-names@1.3905.0",
-    "mocha": "^10.4.0",
+    "mocha": "^10.8.2",
     "npm-run-all2": "^7.0.1",
     "pacote": "^20.0.0",
     "prettier": "^3.2.5",
