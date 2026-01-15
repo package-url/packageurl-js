@@ -1,4 +1,6 @@
-# packageurl-js
+# Package URL (purl) for JavaScript
+
+A parser and builder based on package url spec, implemented in JavaScript.
 
 ### Installing
 
