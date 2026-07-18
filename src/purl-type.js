@@ -305,9 +305,12 @@ module.exports = {
                             return false
                         }
                         if (code0 !== 64 /*'@'*/) {
-                            throw new PurlError(
-                                `npm "namespace" component must start with an "@" character`
-                            )
+                            if (throws) {
+                                throw new PurlError(
+                                    `npm "namespace" component must start with an "@" character`
+                                )
+                            }
+                            return false
                         }
                         const namespaceWithoutAtSign = namespace.slice(1)
                         if (

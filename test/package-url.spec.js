@@ -31,7 +31,7 @@ const TEST_FILE = [
     ...require('./data/contrib-tests.json')
 ]
 
-const { PackageURL } = require('../src/package-url')
+const { PackageURL, PurlType } = require('../src/package-url')
 
 function getNpmId(purl) {
     const { name, namespace } = purl
@@ -543,6 +543,26 @@ describe('PackageURL', function () {
                 purlWithUnderscore.toString(),
                 'pkg:pypi/typing-extensions-blah@1.0.0'
             )
+        })
+    })
+
+    describe('npm validate', function () {
+        it('should return false rather than throw for a bad namespace when throws is false', function () {
+            const purl = { type: 'npm', namespace: 'foo', name: 'bar' }
+            assert.strictEqual(PurlType.npm.validate(purl, false), false)
+        })
+
+        it('should still throw for a bad namespace when throws is true', function () {
+            const purl = { type: 'npm', namespace: 'foo', name: 'bar' }
+            assert.throws(
+                () => PurlType.npm.validate(purl, true),
+                /npm "namespace" component must start with an "@" character/
+            )
+        })
+
+        it('should accept a scoped namespace when throws is false', function () {
+            const purl = { type: 'npm', namespace: '@scope', name: 'bar' }
+            assert.strictEqual(PurlType.npm.validate(purl, false), true)
         })
     })
 })
