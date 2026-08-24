@@ -2,7 +2,7 @@
   {
     "description": "debian can have debian versions as part of version with plus sign",
     "purl": "pkg:deb/debian/libssl1.1@1.1.1n-0+deb10u3?arch=amd64&distro=debian-10",
-    "canonical_purl": "pkg:deb/debian/libssl1.1@1.1.1n-0+deb10u3?arch=amd64&distro=debian-10",
+    "canonical_purl": "pkg:deb/debian/libssl1.1@1.1.1n-0%2Bdeb10u3?arch=amd64&distro=debian-10",
     "type": "deb",
     "namespace": "debian",
     "name": "libssl1.1",
