@@ -31,7 +31,7 @@
     "all-the-package-names-v1.3905.0": "npm:all-the-package-names@1.3905.0",
     "mocha": "^10.4.0",
     "npm-run-all2": "^7.0.1",
-    "pacote": "^20.0.0",
+    "pacote": "^21.0.4",
     "prettier": "^3.2.5",
     "validate-npm-package-name": "^6.0.0",
     "yocto-spinner": "^0.1.1"
