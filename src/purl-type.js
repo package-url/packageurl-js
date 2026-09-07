@@ -133,16 +133,6 @@ module.exports = {
                     }
                     return purl
                 },
-                // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#npm
-                npm(purl) {
-                    lowerNamespace(purl)
-                    // Ignore lowercasing legacy names because they could be mixed case.
-                    // https://github.com/npm/validate-npm-package-name/tree/v6.0.0?tab=readme-ov-file#legacy-names
-                    if (!isNpmLegacyName(getNpmId(purl))) {
-                        lowerName(purl)
-                    }
-                    return purl
-                },
                 // https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#luarocks
                 luarocks(purl) {
                     lowerVersion(purl)
@@ -334,6 +324,9 @@ module.exports = {
                         }
                         return false
                     }
+                    // npm names and scopes are case-sensitive, including names
+                    // outside the public registry's known legacy packages.
+                    // https://packageurl.org/types/npm-definition.json
                     // The remaining checks are only for modern names.
                     // https://github.com/npm/validate-npm-package-name/tree/v6.0.0?tab=readme-ov-file#naming-rules
                     if (!isNpmLegacyName(id)) {
@@ -341,14 +334,6 @@ module.exports = {
                             if (throws) {
                                 throw new PurlError(
                                     `npm "namespace" and "name" components can not collectively be more than 214 characters`
-                                )
-                            }
-                            return false
-                        }
-                        if (loweredId !== id) {
-                            if (throws) {
-                                throw new PurlError(
-                                    `npm "name" component can not contain capital letters`
                                 )
                             }
                             return false

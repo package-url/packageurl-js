@@ -479,6 +479,58 @@ describe('PackageURL', function () {
     })
 
     describe('npm', function () {
+        for (const [namespace, name] of [
+            [undefined, 'ExamplePackage'],
+            ['@examplescope', 'ExamplePackage'],
+            ['@ExampleScope', 'examplepackage'],
+            ['@ExampleScope', 'ExamplePackage'],
+            [undefined, 'examplepackage']
+        ]) {
+            const id = `${namespace ? `${namespace}/` : ''}${name}`
+            const purlString = `pkg:npm/${id.replace('@', '%40')}@1.0.0`
+
+            it(`should preserve case when constructing ${id}`, function () {
+                const purl = new PackageURL('npm', namespace, name, '1.0.0')
+                assert.strictEqual(purl.namespace, namespace)
+                assert.strictEqual(purl.name, name)
+                assert.strictEqual(purl.toString(), purlString)
+            })
+
+            it(`should preserve case when parsing ${id}`, function () {
+                const purl = PackageURL.fromString(purlString)
+                assert.strictEqual(purl.namespace, namespace)
+                assert.strictEqual(purl.name, name)
+                assert.strictEqual(purl.toString(), purlString)
+            })
+
+            it(`should validate ${id} without changing case`, function () {
+                const purl = { type: 'npm', namespace, name }
+                assert.strictEqual(
+                    PackageURL.Type.npm.validate(purl, false),
+                    true
+                )
+                assert.strictEqual(
+                    PackageURL.Type.npm.validate(purl, true),
+                    true
+                )
+                assert.strictEqual(purl.namespace, namespace)
+                assert.strictEqual(purl.name, name)
+            })
+        }
+
+        it('should keep differently capitalized package identities distinct', function () {
+            for (const [first, second] of [
+                ['pkg:npm/ExamplePackage', 'pkg:npm/examplepackage'],
+                ['pkg:npm/%40ExampleScope/pkg', 'pkg:npm/%40examplescope/pkg'],
+                ['pkg:npm/MEAN', 'pkg:npm/mean']
+            ]) {
+                assert.notStrictEqual(
+                    PackageURL.fromString(first).toString(),
+                    PackageURL.fromString(second).toString()
+                )
+            }
+        })
+
         it("should allow legacy names to be mixed case, match a builtin, or contain ~'!()* characters", function () {
             for (const legacyName of npmLegacyNames) {
                 let purl
